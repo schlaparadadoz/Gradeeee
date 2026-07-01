@@ -1,0 +1,2154 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#15171C">
+<meta name="description" content="Pokémon- & Yu-Gi-Oh!-Karten verwalten, bewerten und Grading-ROI berechnen.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Grade-Check">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Grade-Check Vault</title>
+<style>
+  :root{
+    --vault:#15171C; --vault2:#1C1F26; --card:#21252E; --line:#2C313C;
+    --gold:#E6B450; --gold-dim:#9A7B33; --ink:#EDEFF3; --muted:#9AA3B2;
+    --green:#4FB477; --red:#E0556B; --blue:#5B8DEF;
+    --r:14px; --sh:0 6px 22px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;background:var(--vault);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    font-size:16px;line-height:1.45;overscroll-behavior-y:none}
+  body{padding-bottom:84px}
+  h1,h2,h3{margin:0 0 .4em;font-weight:700;letter-spacing:.2px}
+  a{color:var(--gold)}
+  .wrap{max-width:560px;margin:0 auto;padding:0 14px}
+
+  /* Header */
+  header{position:sticky;top:0;z-index:30;background:linear-gradient(180deg,var(--vault) 70%,rgba(21,23,28,.0));
+    padding:14px 0 8px}
+  .brand{display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+  .logo{width:38px;height:38px;border-radius:10px;flex:0 0 auto;
+    background:radial-gradient(circle at 30% 25%,#2a2e38,#15171C);
+    border:1px solid var(--gold-dim);display:grid;place-items:center;
+    box-shadow:inset 0 0 12px rgba(230,180,80,.18)}
+  .logo svg{width:22px;height:22px}
+  .brand b{font-size:1.18rem;letter-spacing:.3px}
+  .brand small{display:block;color:var(--muted);font-size:.72rem;font-weight:500;margin-top:-2px}
+
+  /* Tabs */
+  nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:40;
+    background:var(--vault2);border-top:1px solid var(--line);
+    display:flex;justify-content:space-around;padding:6px 4px env(safe-area-inset-bottom);
+    box-shadow:0 -4px 18px rgba(0,0,0,.4)}
+  nav.tabs button{flex:1;background:none;border:0;color:var(--muted);
+    font-size:.62rem;font-weight:600;padding:6px 2px;display:flex;flex-direction:column;
+    align-items:center;gap:3px;cursor:pointer;border-radius:10px}
+  nav.tabs button svg{width:21px;height:21px}
+  nav.tabs button.active{color:var(--gold)}
+  nav.tabs button.active svg{filter:drop-shadow(0 0 6px rgba(230,180,80,.5))}
+
+  /* Panels */
+  .panel{display:none;animation:fade .25s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* Cards / UI */
+  .box{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    padding:14px;margin:12px 0;box-shadow:var(--sh)}
+  .box h3{color:var(--gold);font-size:.95rem;display:flex;align-items:center;gap:8px}
+  label{display:block;font-size:.78rem;color:var(--muted);margin:10px 0 4px;font-weight:600}
+  input,select,textarea{width:100%;background:var(--vault2);border:1px solid var(--line);
+    color:var(--ink);border-radius:10px;padding:11px 12px;font-size:1rem;font-family:inherit}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--gold-dim);border-color:var(--gold-dim)}
+  textarea{resize:vertical;min-height:90px}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  button.btn{background:var(--gold);color:#1a1206;border:0;border-radius:11px;
+    padding:12px 14px;font-size:.95rem;font-weight:700;cursor:pointer;width:100%;
+    box-shadow:0 3px 12px rgba(230,180,80,.25)}
+  button.btn:active{transform:translateY(1px)}
+  button.ghost{background:var(--vault2);color:var(--ink);border:1px solid var(--line);
+    box-shadow:none;font-weight:600}
+  button.ghost.gold{color:var(--gold);border-color:var(--gold-dim)}
+  .mini{padding:8px 10px;font-size:.82rem;width:auto;flex:0 0 auto}
+  .pill{display:inline-block;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:999px;
+    background:rgba(230,180,80,.14);color:var(--gold);border:1px solid var(--gold-dim)}
+  .muted{color:var(--muted)}
+  .big{font-size:1.7rem;font-weight:800;letter-spacing:.5px}
+  .pos{color:var(--green)} .neg{color:var(--red)}
+  hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .stat{background:var(--vault2);border:1px solid var(--line);border-radius:11px;padding:10px 12px}
+  .stat b{display:block;font-size:1.25rem;color:var(--gold)}
+  .stat span{font-size:.72rem;color:var(--muted)}
+
+  /* Collection list */
+  .item{display:flex;gap:11px;align-items:center;padding:10px;border:1px solid var(--line);
+    border-radius:12px;background:var(--vault2);margin:8px 0}
+  .item img,.item .ph{width:46px;height:64px;border-radius:7px;object-fit:cover;flex:0 0 auto;
+    background:#2b2f39;border:1px solid var(--line)}
+  .item .ph{display:grid;place-items:center;color:var(--muted);font-size:.65rem;text-align:center}
+  .item .meta{flex:1;min-width:0}
+  .item .meta b{font-size:.92rem;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .meta small{color:var(--muted);font-size:.72rem}
+  .item .val{text-align:right;font-size:.85rem}
+  .item .val b{color:var(--gold)}
+  .x{background:none;border:0;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:4px}
+  .empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:.86rem}
+  .seg{display:flex;gap:6px;margin:0 0 10px}
+  .seg button{flex:1;background:var(--vault2);border:1px solid var(--line);color:var(--muted);
+    border-radius:10px;padding:9px;font-size:.85rem;font-weight:700;cursor:pointer}
+  .seg button.on{background:rgba(230,180,80,.14);color:var(--gold);border-color:var(--gold-dim)}
+  .badge{font-size:.62rem;font-weight:800;padding:1px 5px;border-radius:5px;vertical-align:middle}
+  .badge.pkmn{background:rgba(230,180,80,.16);color:var(--gold)}
+  .badge.ygo{background:rgba(91,141,239,.18);color:var(--blue)}
+  .actions{display:flex;gap:8px;margin:6px 0 14px}
+  .action{flex:1;background:var(--vault2);border:1px solid var(--line);border-radius:13px;
+    padding:13px 6px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;
+    transition:.15s;color:var(--ink);text-align:center}
+  .action:active{transform:translateY(1px)}
+  .action:hover{border-color:var(--gold-dim)}
+  .action svg{width:25px;height:25px;stroke:var(--gold)}
+  .action span{font-size:.82rem;font-weight:700}
+  .action small{font-size:.64rem;color:var(--muted);font-weight:500;margin-top:-2px}
+  .preview{display:none;align-items:center;gap:11px;background:var(--vault2);
+    border:1px solid var(--gold-dim);border-radius:12px;padding:8px 10px;margin-bottom:8px}
+  .preview img{width:50px;height:70px;object-fit:cover;border-radius:7px;border:1px solid var(--line)}
+  .preview span{font-size:.8rem;color:var(--ink)}
+  .preview .x{margin-left:auto;font-size:1.2rem}
+
+  /* Toast + dialog */
+  .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);
+    background:#0c0d11;border:1px solid var(--gold-dim);color:var(--ink);
+    padding:11px 16px;border-radius:12px;font-size:.85rem;z-index:80;opacity:0;
+    transition:.3s;pointer-events:none;max-width:90%;box-shadow:var(--sh)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .nudge{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);
+    background:var(--card);border:1px solid var(--gold-dim);color:var(--ink);
+    padding:12px 14px;border-radius:14px;z-index:82;opacity:0;transition:.3s;
+    display:none;max-width:min(94%,520px);box-shadow:var(--sh);
+    align-items:center;gap:10px}
+  .nudge.show{display:flex;opacity:1;transform:translateX(-50%) translateY(0)}
+  .nudge .ntxt{font-size:.82rem;line-height:1.35;flex:1}
+  .nudge .ntxt b{color:var(--gold)}
+  .nudge .nact{flex:0 0 auto;background:var(--gold);color:#1a1400;border:0;
+    border-radius:9px;padding:8px 12px;font-size:.8rem;font-weight:700;cursor:pointer}
+  .nudge .nx{flex:0 0 auto;background:none;border:0;color:var(--muted);
+    font-size:1.1rem;cursor:pointer;padding:0 2px;line-height:1}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:90;display:none;
+    align-items:center;justify-content:center;padding:20px}
+  .modal.show{display:flex}
+  .modal .inner{background:var(--card);border:1px solid var(--gold-dim);border-radius:16px;
+    padding:18px;max-width:380px;width:100%;box-shadow:var(--sh)}
+  .modal .inner p{font-size:.9rem;color:var(--ink)}
+
+  /* Profil + Auth */
+  .profile{display:flex;align-items:center;gap:7px;background:var(--vault2);border:1px solid var(--line);
+    border-radius:999px;padding:4px 11px 4px 5px;cursor:pointer;color:var(--ink);font-size:.78rem;font-weight:600;flex:0 0 auto}
+  .profile .av{width:26px;height:26px;border-radius:50%;background:var(--gold);color:#1a1206;
+    display:grid;place-items:center;font-weight:800;font-size:.78rem;overflow:hidden}
+  .profile .av img{width:100%;height:100%;object-fit:cover}
+  .rbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    background:#F26207;color:#fff;border:0;border-radius:11px;padding:11px;font-weight:700;font-size:.9rem;cursor:pointer;margin-bottom:8px}
+  .rbtn svg{width:18px;height:18px}
+  .gbtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+    background:#fff;color:#1f1f1f;border:0;border-radius:11px;padding:11px;font-weight:700;font-size:.9rem;cursor:pointer}
+  .gbtn svg{width:18px;height:18px}
+  .divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.72rem;margin:14px 0}
+  .divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+  .auth-tabs{display:flex;gap:6px;margin-bottom:8px}
+  .auth-tabs button{flex:1;background:var(--vault2);border:1px solid var(--line);color:var(--muted);
+    border-radius:9px;padding:8px;font-weight:700;font-size:.82rem;cursor:pointer}
+  .auth-tabs button.on{color:var(--gold);border-color:var(--gold-dim);background:rgba(230,180,80,.12)}
+
+  /* Arena Monster-Auswahl */
+  .mon-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:262px;overflow-y:auto;padding:2px;margin:4px 0 8px}
+  .mon{background:var(--vault2);border:1px solid var(--line);border-radius:11px;padding:7px 5px;
+    display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;color:var(--ink);text-align:center}
+  .mon.sel{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold-dim) inset}
+  .mon img,.mon .ph{width:42px;height:58px;border-radius:6px;object-fit:cover;background:#2b2f39}
+  .mon .ph{display:grid;place-items:center;font-size:.56rem;color:var(--muted);padding:2px}
+  .mon span{font-size:.67rem;font-weight:700;line-height:1.15;max-height:2.3em;overflow:hidden}
+  .mon small{font-size:.6rem;color:var(--gold)}
+  .mon-pick{background:var(--vault2);border:1px solid var(--gold-dim);border-radius:11px;padding:10px 12px;font-size:.82rem;margin-bottom:8px}
+  .mon-pick b{color:var(--gold)}
+
+  /* 3D-Arena */
+  .stage3d{position:relative;width:100%;height:210px;border-radius:14px;overflow:hidden;
+    border:1px solid var(--line);background:radial-gradient(circle at 50% 30%,#1d2230,#0d0f14);margin-bottom:10px}
+  .stage3d canvas{display:block;width:100%;height:100%}
+  .stage3d .hud{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:space-between;
+    padding:8px;pointer-events:none}
+  .stage3d .hud .row{display:flex;justify-content:space-between;gap:10px}
+  .hud .tag{background:rgba(13,14,18,.72);border:1px solid var(--line);border-radius:9px;padding:5px 8px;min-width:42%}
+  .hud .tag.me{border-color:var(--gold-dim)} .hud .tag.foe{border-color:var(--red)}
+  .hud .tag small{font-size:.66rem;color:var(--muted);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stage3d .badge3d{position:absolute;top:8px;left:50%;transform:translateX(-50%);
+    font-size:.62rem;color:var(--muted);background:rgba(13,14,18,.6);padding:2px 8px;border-radius:8px}
+
+  /* XP / Level / Sticker */
+  .xpbar{height:9px;border-radius:6px;background:#33373f;overflow:hidden;margin-top:8px}
+  .xpbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--gold-dim),var(--gold));transition:width .5s}
+  .stickers{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .stk{flex:0 0 auto;min-width:84px;border-radius:11px;padding:9px 10px;text-align:center;
+    border:1px solid var(--line);background:var(--vault2);font-size:.72rem;font-weight:700}
+  .stk.locked{color:var(--muted);opacity:.6}
+  .stk.unlocked{color:var(--gold);border-color:var(--gold-dim);background:rgba(230,180,80,.1)}
+  .stk.fgwl{background:linear-gradient(135deg,#2a2310,#15171C);border-color:var(--gold);
+    color:var(--gold);box-shadow:0 0 0 1px var(--gold-dim) inset, 0 4px 16px rgba(230,180,80,.2)}
+  .stk small{display:block;font-size:.58rem;color:var(--muted);font-weight:500;margin-top:2px}
+  .stk.unlocked small,.stk.fgwl small{color:var(--gold-dim)}
+
+  /* Sticker-Pop */
+  #sticker-modal .inner{text-align:center;border-color:var(--gold)}
+  .bigsticker{margin:6px auto 12px;width:180px;padding:22px 14px;border-radius:16px;
+    background:linear-gradient(135deg,#2a2310,#15171C);border:2px solid var(--gold);
+    color:var(--gold);font-weight:800;font-size:1.5rem;letter-spacing:1px;
+    box-shadow:0 0 30px rgba(230,180,80,.35);animation:pop .5s ease}
+  @keyframes pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+
+  /* Server-Sync */
+  .syncbox{display:flex;align-items:center;gap:8px;font-size:.78rem}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:0 0 auto}
+  .dot.on{background:var(--green)} .dot.off{background:var(--red)}
+
+  /* Admin */
+  .adm-stat{display:flex;justify-content:space-between;font-size:.82rem;padding:4px 0;border-bottom:1px solid var(--line)}
+  .adm-stat b{color:var(--gold)}
+
+  /* Arena */
+  .arena-stage{background:radial-gradient(circle at 50% 0%,#23283400,#1a1d24);
+    border:1px solid var(--line);border-radius:16px;padding:14px;text-align:center}
+  .fighter{display:flex;justify-content:space-between;gap:10px;margin:6px 0}
+  .fighter .side{flex:1;background:var(--vault2);border:1px solid var(--line);
+    border-radius:12px;padding:10px}
+  .fighter .side.foe{border-color:var(--red)}
+  .fighter .side.me{border-color:var(--gold-dim)}
+  .hp{height:9px;border-radius:6px;background:#33373f;overflow:hidden;margin-top:6px}
+  .hp i{display:block;height:100%;background:var(--green);transition:width .35s}
+  .hp.low i{background:var(--red)}
+  .log{background:#0d0e12;border:1px solid var(--line);border-radius:10px;padding:9px 11px;
+    font-size:.78rem;color:var(--muted);height:78px;overflow-y:auto;text-align:left;margin-top:10px}
+  .log b{color:var(--gold)}
+  @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  /* Nebula-Tab */
+  #p-nebula{padding:0}
+  .nebula-wrap{position:relative;width:100%;height:calc(100vh - 168px);min-height:420px;
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#000;margin-top:10px}
+  #nebula-frame{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+  .nebula-note{font-size:.74rem;color:var(--muted);margin:6px 2px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+    <div class="brand" id="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#E6B450" stroke-width="1.7">
+          <path d="M12 2l8 4v6c0 5-3.5 8.5-8 10C7.5 20.5 4 17 4 12V6l8-4z" fill="rgba(230,180,80,.1)"/>
+          <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <b>Grade-Check <span style="color:var(--gold)">Vault</span></b>
+        <small>Scannen · Bewerten · Handeln · Grading-ROI</small>
+      </div>
+    </div>
+    <button class="profile" id="profile-chip" onclick="openAuth()">
+      <span class="av" id="profile-av">?</span>
+      <span id="profile-name">Anmelden</span>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 1 · SAMMLUNG -->
+  <section class="panel active" id="p-sammlung">
+    <div class="grid2" style="margin-top:12px">
+      <div class="stat"><b id="s-count">0</b><span>Karten</span></div>
+      <div class="stat"><b id="s-value">0,00 €</b><span>Sammlungswert</span></div>
+    </div>
+    <div class="grid2">
+      <div class="stat"><b id="s-cost">0,00 €</b><span>Einkauf gesamt</span></div>
+      <div class="stat"><b id="s-pl">0,00 €</b><span>Gewinn / Verlust</span></div>
+    </div>
+
+    <div class="box">
+      <h3>＋ Karte hinzufügen</h3>
+
+      <div class="actions">
+        <div class="action" onclick="el('c-cam').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8a2 2 0 012-2h2l1.5-2h7L17 6h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V8z"/><circle cx="12" cy="12.5" r="3.2"/></svg>
+          <span>Foto</span><small>aufnehmen</small>
+        </div>
+        <div class="action" onclick="el('c-photo').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 16V4M12 4l-4 4M12 4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+          <span>Upload</span><small>Galerie</small>
+        </div>
+        <div class="action" onclick="tab('scan')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>
+          <span>Scan</span><small>erkennen</small>
+        </div>
+      </div>
+      <input id="c-cam" type="file" accept="image/*" capture="environment" style="display:none" onchange="setPhoto(this.files[0])">
+      <input id="c-photo" type="file" accept="image/*" style="display:none" onchange="setPhoto(this.files[0])">
+      <div class="preview" id="photo-preview"></div>
+
+      <label>Beschreibung</label>
+      <input id="c-name" placeholder="z. B. Glurak ex">
+
+      <label>Zustand</label>
+      <select id="c-cond">
+        <option value="gem">Gem Mint (10)</option>
+        <option value="nm" selected>Near Mint (8–9)</option>
+        <option value="ex">Excellent (6–7)</option>
+        <option value="pl">Played (1–5)</option>
+      </select>
+
+      <label>Seriennummer</label>
+      <input id="c-num" placeholder="z. B. 199/197">
+
+      <hr>
+
+      <div class="row">
+        <div><label>Set</label><input id="c-set" placeholder="z. B. Obsidian"></div>
+        <div>
+          <label>Spiel</label>
+          <select id="c-game" onchange="syncCats()">
+            <option value="pkmn">Pokémon</option>
+            <option value="ygo">Yu-Gi-Oh!</option>
+          </select>
+        </div>
+      </div>
+      <label>Kategorie</label>
+      <select id="c-cat"></select>
+      <div class="row">
+        <div><label>Kaufpreis €</label><input id="c-cost" inputmode="decimal" placeholder="0,00"></div>
+        <div><label>Marktwert €</label><input id="c-val" inputmode="decimal" placeholder="0,00"></div>
+      </div>
+      <div style="height:12px"></div>
+      <button class="btn" onclick="addCard()">In den Vault legen</button>
+    </div>
+
+    <div class="box">
+      <h3 style="justify-content:space-between">
+        <span>📚 Deine Sammlung</span>
+        <span class="pill" id="coll-count">0</span>
+      </h3>
+      <div class="row" style="margin-bottom:8px">
+        <input id="c-search" placeholder="Suchen…" oninput="renderCollection()">
+        <select id="c-sort" class="mini" style="flex:0 0 auto;width:auto" onchange="renderCollection()">
+          <option value="date">Neueste</option>
+          <option value="value">Wert ↓</option>
+          <option value="name">Name A–Z</option>
+          <option value="pl">G/V ↓</option>
+        </select>
+      </div>
+      <div id="collection"></div>
+    </div>
+
+    <div class="box" id="sync-box">
+      <h3 style="justify-content:space-between">
+        <span>☁️ Lokaler Server-Sync</span>
+        <span class="syncbox"><span class="dot off" id="sync-dot"></span><span id="sync-state" class="muted">offline</span></span>
+      </h3>
+      <p class="muted" style="font-size:.78rem;margin-top:0">
+        Sichert deine Sammlung auf deinem eigenen, kostenlosen Server (<code>server.js</code>).
+        Läuft kein Server, bleibt alles lokal im Gerät.
+      </p>
+      <div class="row" style="margin-bottom:8px">
+        <input id="server-url" placeholder="http://localhost:8787" style="font-size:.82rem">
+        <button class="ghost gold mini" style="flex:0 0 auto" onclick="saveServerUrl()">OK</button>
+      </div>
+      <div class="row">
+        <button class="ghost gold mini" style="flex:1" onclick="pushToServer(true)">⬆ Hochladen</button>
+        <button class="ghost mini" style="flex:1" onclick="pullFromServer()">⬇ Laden</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="ghost mini" style="flex:1" onclick="exportVaultKey()">🔑 Schlüssel exportieren</button>
+        <button class="ghost mini" style="flex:1" onclick="importVaultKey()">📥 Schlüssel importieren</button>
+      </div>
+      <p class="muted" style="font-size:.68rem;margin:6px 0 0">
+        🔒 Deine Daten werden vor dem Upload mit AES-256 verschlüsselt. Der Schlüssel verlässt dein Gerät nie.
+        Für andere Geräte: Schlüssel exportieren und dort importieren.
+      </p>
+      <div class="row" style="margin-top:8px">
+        <button class="ghost gold mini" style="flex:1" onclick="downloadServer()">⬇ server.js herunterladen</button>
+      </div>
+    </div>
+
+    <div class="box" id="fb-box">
+      <h3 style="justify-content:space-between">
+        <span>🔥 Firebase Cloud <span class="muted" style="font-size:.7rem;font-weight:500">(optional)</span></span>
+        <span class="syncbox"><span class="dot off" id="fb-dot"></span><span id="fb-state" class="muted">aus</span></span>
+      </h3>
+      <p class="muted" style="font-size:.78rem;margin-top:0">
+        Dein <b style="color:var(--gold)">Hauptkonto</b> für echte geräteübergreifende Sync – nach dem Anmelden wird jede Änderung automatisch in die Cloud gesichert. Aktiviert sich nur, wenn du deine <code>FIREBASE_CONFIG</code> im Code einträgst (Anleitung steht dort). Ohne Config bleibt alles lokal – die App läuft normal offline weiter.
+      </p>
+      <div id="fb-auth">
+        <div class="row" style="margin-bottom:8px">
+          <input id="fb-email" type="email" placeholder="E-Mail" autocomplete="username" style="font-size:.82rem">
+        </div>
+        <div class="row" style="margin-bottom:8px">
+          <input id="fb-pass" type="password" placeholder="Passwort (min. 6)" autocomplete="current-password" style="font-size:.82rem">
+        </div>
+        <div class="row">
+          <button class="ghost gold mini" style="flex:1" onclick="fbAuth('login')">Anmelden</button>
+          <button class="ghost mini" style="flex:1" onclick="fbAuth('reg')">Registrieren</button>
+        </div>
+        <div id="fb-err" class="neg" style="font-size:.76rem;margin-top:6px;display:none"></div>
+      </div>
+      <div id="fb-signed" style="display:none">
+        <p class="muted" style="font-size:.78rem;margin:0 0 8px">Angemeldet: <b id="fb-who" style="color:var(--ink)"></b></p>
+        <div class="row">
+          <button class="ghost gold mini" style="flex:1" onclick="fbPush(true)">⬆ In Cloud sichern</button>
+          <button class="ghost mini" style="flex:1" onclick="fbPull()">⬇ Aus Cloud laden</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="ghost mini" style="flex:1" onclick="fbLogout()">Cloud abmelden</button>
+        </div>
+      </div>
+      <p class="muted" style="font-size:.68rem;margin:8px 0 0">
+        Fotos bleiben lokal (nur Kartendaten + Werte gehen in die Cloud). Der öffentliche Firebase-<code>apiKey</code> ist kein Geheimnis – die Sicherheit kommt aus den Firestore-Regeln im Code.
+      </p>
+    </div>
+
+    <div class="row">
+      <button class="ghost gold mini" style="flex:1" onclick="exportJSON()">⬇ Export (JSON)</button>
+      <button class="ghost mini" style="flex:1" onclick="document.getElementById('imp').click()">⬆ Import</button>
+      <input id="imp" type="file" accept="application/json,.json" style="display:none" onchange="importJSON(event)">
+    </div>
+  </section>
+
+  <!-- 2 · SCAN & API -->
+  <section class="panel" id="p-scan">
+    <div class="box" style="margin-top:12px">
+      <h3>🔍 Karte suchen &amp; scannen</h3>
+      <p class="muted" style="font-size:.8rem;margin-top:0">
+        Tippe einen Namen ein <b>oder</b> scanne die Karte per Kamera/Foto –
+        der Name wird erkannt und automatisch in der gewählten Datenbank gesucht.
+      </p>
+      <div class="seg" id="api-src">
+        <button class="on" data-src="pkmn" onclick="setSource('pkmn')">Pokémon</button>
+        <button data-src="ygo" onclick="setSource('ygo')">Yu-Gi-Oh!</button>
+        <button data-src="both" onclick="setSource('both')">Beide</button>
+      </div>
+      <div class="row">
+        <input id="api-q" placeholder="z. B. Glurak / Pikachu">
+        <button class="ghost gold mini" style="flex:0 0 auto" onclick="el('api-cam').click()" aria-label="Karte scannen" title="Karte scannen">📷</button>
+        <button class="btn mini" style="flex:0 0 auto" onclick="apiSearch()">Suchen</button>
+      </div>
+      <input id="api-cam" type="file" accept="image/*" capture="environment" style="display:none" onchange="scanToSearch(this.files[0])">
+      <div id="scan-status" class="muted" style="font-size:.8rem;margin-top:8px;display:none"></div>
+      <div id="api-results" style="margin-top:10px"></div>
+      <p class="muted" style="font-size:.72rem;margin:10px 0 0">
+        Tipp: „Beide" durchsucht Pokémon und Yu-Gi-Oh gleichzeitig – ideal, wenn du beim
+        Scannen nicht sicher bist, um welches Spiel es sich handelt.
+      </p>
+    </div>
+  </section>
+
+  <!-- 3 · ROI & MARKT -->
+  <section class="panel" id="p-roi">
+    <div class="box" style="margin-top:12px">
+      <h3>💰 Grading-ROI-Rechner</h3>
+      <p class="muted" style="font-size:.8rem;margin-top:0">
+        Lohnt sich PSA-Grading? Berechnung über Wahrscheinlichkeits-Profile je Zustand.
+      </p>
+      <label>Roh-Marktwert der Karte €</label>
+      <input id="r-raw" inputmode="decimal" placeholder="z. B. 80,00">
+      <div class="row">
+        <div>
+          <label>Zustand (Einschätzung)</label>
+          <select id="r-cond">
+            <option value="gem">Top / makellos</option>
+            <option value="nm" selected>Sehr gut</option>
+            <option value="ex">Gut</option>
+            <option value="pl">Sichtbare Mängel</option>
+          </select>
+        </div>
+        <div>
+          <label>PSA-Service</label>
+          <select id="r-tier">
+            <option value="value">Value (~25 €)</option>
+            <option value="reg" selected>Regular (~40 €)</option>
+            <option value="express">Express (~80 €)</option>
+          </select>
+        </div>
+      </div>
+      <label>Versand / Nebenkosten €</label>
+      <input id="r-ship" inputmode="decimal" placeholder="z. B. 15,00" value="15">
+      <div style="height:12px"></div>
+      <button class="btn" onclick="calcROI()">ROI berechnen</button>
+      <div id="roi-out"></div>
+    </div>
+  </section>
+
+  <!-- 5 · MASTER-POLISH -->
+  <section class="panel" id="p-polish">
+    <div class="box" style="margin-top:12px">
+      <h3>✨ Master-Polish Trainer</h3>
+      <p class="muted" style="font-size:.82rem;margin-top:0">
+        Trainiere deinen Blick fürs Grading. Bewerte die vier Kriterien – die App schätzt
+        eine wahrscheinliche PSA-Note.
+      </p>
+      <div id="polish-controls"></div>
+      <div style="height:6px"></div>
+      <button class="btn" onclick="estimateGrade()">Note schätzen</button>
+      <div id="polish-out"></div>
+    </div>
+    <div class="box">
+      <h3>📖 Schnell-Referenz</h3>
+      <p style="font-size:.82rem;margin:0">
+        <b style="color:var(--gold)">Centering</b> – Rahmenabstand gleichmäßig? 55/45 ist die Grenze für hohe Noten.<br>
+        <b style="color:var(--gold)">Ecken</b> – Schon leichtes Weiß = Punktabzug.<br>
+        <b style="color:var(--gold)">Kanten</b> – Whitening / Nicks gegen dunkle Fläche prüfen.<br>
+        <b style="color:var(--gold)">Oberfläche</b> – Kratzer, Print Lines, Dellen im Licht kippen.
+      </p>
+    </div>
+  </section>
+
+  <!-- 6 · ARENA -->
+  <section class="panel" id="p-arena">
+    <div class="box" style="margin-top:12px">
+      <h3 style="justify-content:space-between">
+        <span>⚔️ Vault-Arena</span>
+        <span class="pill" id="streak-pill">Serie: 0</span>
+      </h3>
+      <div id="arena-setup">
+        <p class="muted" style="font-size:.82rem;margin-top:0">
+          Wähle dein Kampf-Monster aus deiner Sammlung. Wert &amp; Zustand bestimmen HP und Angriffskraft.
+        </p>
+        <label>Dein Monster</label>
+        <div id="monster-list" class="mon-grid"></div>
+        <div id="monster-pick" class="mon-pick" style="display:none"></div>
+        <label>Schwierigkeit</label>
+        <select id="a-diff">
+          <option value="leicht">Leicht</option>
+          <option value="normal" selected>Normal</option>
+          <option value="schwer">Schwer</option>
+        </select>
+        <div style="height:12px"></div>
+        <button class="btn" onclick="startArena()">Kampf starten</button>
+      </div>
+
+      <div id="arena-stage" style="display:none">
+        <div class="stage3d" id="stage3d">
+          <div class="badge3d" id="badge3d">3D wird geladen…</div>
+          <div class="hud">
+            <div class="row">
+              <div class="tag foe"><small id="foe-name">Gegner</small><div class="hp" id="foe-hpbar"><i style="width:100%"></i></div><small id="foe-hp">100 HP</small></div>
+              <div class="tag me"><small id="me-name">Dein Monster</small><div class="hp" id="me-hpbar"><i style="width:100%"></i></div><small id="me-hp">100 HP</small></div>
+            </div>
+            <div></div>
+          </div>
+        </div>
+        <div class="log" id="arena-log"></div>
+        <div class="grid2" style="margin-top:10px">
+          <button class="btn" onclick="arenaMove('attack')">Angriff</button>
+          <button class="ghost gold" onclick="arenaMove('shield')">Schild</button>
+        </div>
+        <div class="grid2">
+          <button class="ghost" onclick="arenaMove('special')">Spezial ⚡</button>
+          <button class="ghost" onclick="arenaMove('flee')">Aufgeben</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="stat"><b id="a-wins">0</b><span>Siege</span></div>
+      <div class="stat"><b id="a-loss">0</b><span>Niederlagen</span></div>
+    </div>
+
+    <div class="box">
+      <h3 style="justify-content:space-between"><span>🎖️ Fortschritt</span><span class="pill" id="level-pill">Lvl 1</span></h3>
+      <div class="xpbar"><i id="xp-fill"></i></div>
+      <div class="muted" id="xp-text" style="font-size:.74rem;margin-top:5px"></div>
+      <div id="sticker-shelf" class="stickers"></div>
+    </div>
+  </section>
+
+  <!-- 7 · NEBULA (eingebettetes 3D-Spiel) -->
+  <section class="panel" id="p-nebula">
+    <div class="box" style="margin-top:12px">
+      <h3 style="justify-content:space-between"><span>🚀 Nebula Vanguard 3D</span><span class="pill">Spiel</span></h3>
+      <p class="nebula-note">Vollbild-3D-Shooter, isoliert im eigenen Rahmen. Lädt beim ersten Öffnen Three.js aus dem Netz – dafür kurz online sein.</p>
+      <div class="nebula-wrap"><iframe id="nebula-frame" title="Nebula Vanguard 3D" allow="autoplay; fullscreen; gamepad"></iframe></div>
+    </div>
+  </section>
+
+</main>
+
+<nav class="tabs">
+  <button class="active" data-tab="sammlung" onclick="tab('sammlung')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>Sammlung</button>
+  <button data-tab="scan" onclick="tab('scan')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2"/><circle cx="12" cy="12" r="3"/></svg>Scan</button>
+  <button data-tab="roi" onclick="tab('roi')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>ROI</button>
+  <button data-tab="polish" onclick="tab('polish')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z"/></svg>Polish</button>
+  <button data-tab="arena" onclick="tab('arena')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14.5 3.5l6 6-3 3-6-6 3-3zM10 8l6 6M3 21l5-5M6.5 13.5l4 4"/></svg>Arena</button>
+  <button data-tab="nebula" onclick="tab('nebula')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M5 19c4-1 7-4 9-9M5 19l1-5M5 19l5-1M14 4l1.5 3L19 8.5 15.5 10 14 13l-1.5-3L9 8.5 12.5 7 14 4z"/></svg>Nebula</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+<div class="nudge" id="nudge">
+  <span class="ntxt" id="nudge-txt"></span>
+  <button class="nact" id="nudge-act"></button>
+  <button class="nx" id="nudge-x" aria-label="Schließen">✕</button>
+</div>
+<div class="modal" id="modal"><div class="inner">
+  <p id="modal-text"></p>
+  <div class="row" style="margin-top:14px">
+    <button class="ghost mini" style="flex:1" id="modal-cancel">Abbrechen</button>
+    <button class="btn mini" style="flex:1" id="modal-ok">OK</button>
+  </div>
+</div></div>
+
+<div class="modal" id="auth-modal"><div class="inner">
+  <h3 style="color:var(--gold);margin-bottom:3px">Bei Grade-Check Vault anmelden</h3>
+  <p class="muted" style="font-size:.78rem;margin-top:0">Optional – personalisiert die App und merkt sich deine Sitzung.</p>
+
+  <div id="auth-logged-out">
+    <button class="rbtn" onclick="replitSignIn()">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M5.5 2H14l4.5 4.5v3H14V6h-4V2H5.5zm0 0V6H2v12h3.5v4H18l4-4V9.5H18V14h-4v4H5.5V6"/></svg>
+      Anmelden
+    </button>
+
+    <button class="gbtn" onclick="googleSignIn()">
+      <svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.9 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 18.9 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 6.1 29.5 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.3 0-9.7-3.1-11.3-7.9l-6.5 5C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.1-4.1 5.6l6.2 5.2C39.9 35.7 44 30.4 44 24c0-1.3-.1-2.3-.4-3.5z"/></svg>
+      Mit Google anmelden
+    </button>
+    <div id="google-note" class="muted" style="font-size:.7rem;margin-top:6px;display:none"></div>
+
+    <div class="divider">oder per E-Mail</div>
+    <div class="auth-tabs">
+      <button class="on" id="tab-login" onclick="authMode('login')">Anmelden</button>
+      <button id="tab-reg" onclick="authMode('reg')">Registrieren</button>
+    </div>
+    <div id="auth-name-wrap" style="display:none"><input id="auth-name" placeholder="Anzeigename"><div style="height:8px"></div></div>
+    <input id="auth-email" type="email" inputmode="email" autocomplete="email" placeholder="E-Mail">
+    <div style="height:8px"></div>
+    <input id="auth-pass" type="password" autocomplete="current-password" placeholder="Passwort (mind. 6 Zeichen)">
+    <div id="auth-err" class="neg" style="font-size:.76rem;margin-top:6px;display:none"></div>
+    <div style="height:10px"></div>
+    <button class="btn" id="auth-submit" data-mode="login" onclick="emailAuth()">Anmelden</button>
+    <button class="ghost mini" style="width:100%;margin-top:8px" onclick="continueGuest()">Als Gast fortfahren</button>
+  </div>
+
+  <div id="auth-logged-in" style="display:none">
+    <p style="font-size:.9rem">Angemeldet als <b id="auth-who" style="color:var(--gold)"></b></p>
+    <button class="ghost gold" style="width:100%" onclick="logout()">Abmelden</button>
+    <button class="ghost mini" style="width:100%;margin-top:8px" onclick="closeAuth()">Schließen</button>
+  </div>
+
+  <p class="muted" style="font-size:.66rem;margin-top:12px">
+    E-Mail-Konten werden nur auf diesem Gerät gespeichert (Passwort verschlüsselt, keine Wiederherstellung).
+    Für echte geräteübergreifende Konten siehe Firebase-Hinweis im Code.
+  </p>
+</div></div>
+
+<div class="modal" id="admin-modal"><div class="inner">
+  <h3 style="color:var(--gold);margin-bottom:3px">🛠️ Admin-Modus</h3>
+  <div id="admin-body"></div>
+  <button class="ghost mini" style="width:100%;margin-top:12px" onclick="closeAdmin()">Schließen</button>
+</div></div>
+
+<div class="modal" id="sticker-modal"><div class="inner">
+  <h3 style="color:var(--gold)">🎉 Sticker freigeschaltet!</h3>
+  <div class="bigsticker" id="sticker-big">F.G.W.L #47</div>
+  <p class="muted" id="sticker-sub" style="font-size:.82rem">Glückwunsch!</p>
+  <button class="btn mini" style="width:100%" onclick="el('sticker-modal').classList.remove('show')">Cool!</button>
+</div></div>
+
+<script>
+/* ============ Speicher (localStorage + In-Memory-Fallback) ============ */
+const mem = {};
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return mem[k] ?? null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){ mem[k]=v; } }
+};
+let cards = load('gcv_cards', []);
+let stats = load('gcv_stats', {wins:0, loss:0, streak:0});
+stats.xp = stats.xp || 0;
+stats.stickers = stats.stickers || [];
+
+/* ===== Schema-Version (für saubere künftige Daten-Migrationen) ===== */
+const SCHEMA_VERSION = 2;   // 1 = Fotos in localStorage · 2 = Fotos in IndexedDB (Photos)
+
+/* ============ Konfiguration & kostenlose Tools (CDN) ============
+   Eingebaut (lazy geladen, mit Fallback):
+   • three.js  – 3D-Arena            (ESM-Import)
+   • GSAP 3.15 – flüssige Animationen (kostenlos seit Webflow-Übernahme)
+   OPTIONALE freie Tools zum selbst Einbinden (in <head> einfügen):
+   • localForage 1.10 (größere Sammlungen, IndexedDB):
+       <script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"><\/script>
+   • Howler.js 2.2.4 (Kampf-Sounds):
+       <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"><\/script>
+=============================================================== */
+const LIB = {
+  three: 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
+  gsap:  'https://cdn.jsdelivr.net/npm/gsap@3.15/dist/gsap.min.js'
+};
+const ADMIN_CODE = 'FGWL47'; // Admin-Code (kannst du hier ändern)
+
+// Skript als klassisches <script> laden (für UMD-Libs wie GSAP)
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script'); s.src=src; s.async=true;
+    s.onload=res; s.onerror=()=>rej(new Error('load '+src)); document.head.appendChild(s);
+  });
+}
+let _gsap=null;
+async function ensureGSAP(){
+  if(_gsap!==null) return _gsap;
+  try{ await loadScript(LIB.gsap); _gsap=window.gsap||false; }catch(e){ _gsap=false; }
+  return _gsap;
+}
+
+function load(k, def){ try{ const v=store.get(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
+function save(){ store.set('gcv_cards', JSON.stringify(cards)); store.set('gcv_stats', JSON.stringify(stats)); schedulePush(); if(typeof scheduleFbPush==='function') scheduleFbPush(); }
+let _saveT=null;
+function scheduleSave(){ clearTimeout(_saveT); _saveT=setTimeout(save,400); }
+/* ===== Fotos in IndexedDB — namespaced (Suite-OS-idb-Pattern), async/await ===== */
+const Photos = {
+  cache: new Map(),
+  _db: null,
+  async open(){
+    if(this._db) return this._db;
+    this._db = await new Promise((res,rej)=>{
+      let rq; try{ rq = indexedDB.open('gcv_photos',1); }catch(e){ return rej(e); }
+      rq.onupgradeneeded = e=>{ const db=e.target.result; if(!db.objectStoreNames.contains('photos')) db.createObjectStore('photos'); };
+      rq.onsuccess = e=>res(e.target.result);
+      rq.onerror  = e=>rej(e.target.error);
+    });
+    return this._db;
+  },
+  has(id){ return this.cache.has(id); },
+  read(id){ return this.cache.get(id); },
+  async set(id,url){
+    this.cache.set(id,url);
+    try{ const db=await this.open(); return await new Promise(r=>{ const t=db.transaction('photos','readwrite'); t.objectStore('photos').put(url,id); t.oncomplete=()=>r(1); t.onerror=()=>r(0); }); }
+    catch(e){ return 0; }
+  },
+  async get(id){
+    if(this.cache.has(id)) return this.cache.get(id);
+    try{ const db=await this.open(); return await new Promise(r=>{ const rq=db.transaction('photos','readonly').objectStore('photos').get(id); rq.onsuccess=()=>{ if(rq.result) this.cache.set(id,rq.result); r(rq.result||null); }; rq.onerror=()=>r(null); }); }
+    catch(e){ return null; }
+  },
+  async del(id){
+    this.cache.delete(id);
+    try{ const db=await this.open(); return await new Promise(r=>{ const t=db.transaction('photos','readwrite'); t.objectStore('photos').delete(id); t.oncomplete=()=>r(1); t.onerror=()=>r(0); }); }
+    catch(e){ return 0; }
+  }
+};
+function hydratePhotos(){ for(const c of cards){ if(!c.hasPhoto)continue; const slot=document.getElementById('ph-'+c.id); if(!slot||slot.dataset.loaded)continue; Photos.get(c.id).then(url=>{ const s=document.getElementById('ph-'+c.id); if(s&&url){ s.outerHTML='<img id="ph-'+c.id+'" src="'+url+'" alt="" data-loaded="1">'; } }); } }
+function migratePhotos(){ let n=0; for(const c of cards){ if(c.photo){ c.hasPhoto=true; Photos.set(c.id,c.photo); delete c.photo; n++; } } if(n) save(); }
+
+/* Versionierte Migrationen – hier künftige Datenumbauten eintragen (idempotent halten). */
+function migrateSchema(){
+  let from = parseInt(store.get('gcv_schema')||'1', 10) || 1;
+  // v1 -> v2: Fotos von localStorage nach IndexedDB (Photos) verschieben
+  if(from < 2){ migratePhotos(); from = 2; }
+  // künftig: if(from < 3){ …; from = 3; }
+  if(String(from) !== store.get('gcv_schema')) store.set('gcv_schema', String(SCHEMA_VERSION));
+}
+migrateSchema();
+
+/* ============ Lokaler Server-Sync (optional, kostenlos) ============ */
+let serverUrl = store.get('gcv_server') || window.location.origin;
+let serverOnline = false;
+let _pushTimer = null;
+
+function syncUid(){ return (currentUser && currentUser.uid) || 'guest'; }
+function setSyncUI(){
+  const dot=el('sync-dot'), st=el('sync-state'); if(!dot) return;
+  dot.className = 'dot ' + (serverOnline?'on':'off');
+  st.textContent = serverOnline ? 'verbunden' : 'offline';
+  const inp=el('server-url'); if(inp && document.activeElement!==inp) inp.value=serverUrl;
+}
+async function serverPing(){
+  try{
+    const r=await fetch(serverUrl.replace(/\/$/,'')+'/api/health',{cache:'no-store'});
+    serverOnline = r.ok;
+  }catch(e){ serverOnline=false; }
+  setSyncUI(); return serverOnline;
+}
+function saveServerUrl(){
+  serverUrl=(el('server-url').value||'').trim()||'http://localhost:8787';
+  store.set('gcv_server', serverUrl);
+  toast('Server gespeichert'); serverPing();
+}
+function schedulePush(){
+  if(!serverOnline) return;
+  clearTimeout(_pushTimer);
+  _pushTimer=setTimeout(()=>pushToServer(false), 900); // debounced Auto-Sync
+}
+
+/* ============ Firebase Cloud (optional, lazy per CDN – KEIN Build, KEIN npm) ============
+   ECHTE geräteübergreifende Sync. Aktiviert sich NUR, wenn FIREBASE_CONFIG unten ausgefüllt ist.
+   Einrichtung (einmalig, ~5 Min, kostenloser Free-Tier):
+     1) https://console.firebase.google.com  → Projekt anlegen
+     2) Build → Authentication → Sign-in method → "E-Mail/Passwort" aktivieren
+     3) Build → Firestore Database → Datenbank erstellen (Produktionsmodus)
+     4) Projekt-Einstellungen → Web-App (</>) registrieren → firebaseConfig kopieren → unten einsetzen
+     5) Firestore → Regeln → EXAKT das hier einsetzen (jeder Nutzer nur auf seine eigenen Daten):
+        ------------------------------------------------------------------
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            match /vaults/{uid} {
+              allow read, write: if request.auth != null && request.auth.uid == uid;
+            }
+          }
+        }
+        ------------------------------------------------------------------
+   WICHTIG: Der apiKey ist ÖFFENTLICH und KEIN Geheimnis (anders als dein alter TCG-Key).
+   Die Sicherheit kommt ALLEIN aus den Firestore-Regeln oben. Ohne Regeln = DB weltweit offen!
+========================================================================================= */
+const FIREBASE_CONFIG = {
+  // apiKey:            "…",
+  // authDomain:        "DEIN-PROJEKT.firebaseapp.com",
+  // projectId:         "DEIN-PROJEKT",
+  // storageBucket:     "DEIN-PROJEKT.appspot.com",
+  // messagingSenderId: "…",
+  // appId:             "…"
+};
+const FB_VER = '10.12.2';
+let _fb = null;      // gecachte Firebase-Handles nach erstem Laden
+let fbUser = null;   // aktueller Firebase-Nutzer {uid,email}
+
+function fbConfigured(){ return !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId); }
+
+async function ensureFirebase(){
+  if(_fb) return _fb;
+  if(!fbConfigured()) return null;
+  const base='https://www.gstatic.com/firebasejs/'+FB_VER+'/';
+  const [appM, fsM, authM] = await Promise.all([
+    import(base+'firebase-app.js'),
+    import(base+'firebase-firestore.js'),
+    import(base+'firebase-auth.js')
+  ]);
+  const app  = appM.initializeApp(FIREBASE_CONFIG);
+  const db   = fsM.getFirestore(app);
+  const auth = authM.getAuth(app);
+  _fb = { app, db, auth,
+    doc: fsM.doc, setDoc: fsM.setDoc, getDoc: fsM.getDoc,
+    signIn: authM.signInWithEmailAndPassword,
+    register: authM.createUserWithEmailAndPassword,
+    signOut: authM.signOut };
+  authM.onAuthStateChanged(auth, u=>{
+    fbUser = u ? {uid:u.uid, email:u.email||''} : null;
+    if(u){
+      // Firebase = primäres Konto: der ganzen App als currentUser bekannt machen
+      currentUser = {uid:'fb_'+u.uid, name:(u.displayName||(u.email||'').split('@')[0]||'Nutzer'),
+        email:u.email||'', provider:'firebase', avatar:u.photoURL||''};
+      store.set('gcv_user', JSON.stringify(currentUser));
+    } else if(currentUser && currentUser.provider==='firebase'){
+      currentUser = null; store.set('gcv_user', JSON.stringify(null));
+    }
+    renderProfile(); renderAuth(); renderFbUI();
+  });
+  return _fb;
+}
+
+let _fbPushT=null;
+function scheduleFbPush(){                                  // Auto-Cloud-Sync (debounced)
+  if(!fbConfigured() || !fbUser) return;
+  clearTimeout(_fbPushT);
+  _fbPushT=setTimeout(()=>fbPush(false), 1200);
+}
+async function fbInitialSync(mode){                         // sinnvoller Erst-Abgleich nach Login
+  const fb=await ensureFirebase(); if(!fb || !fbUser) return;
+  try{
+    const snap=await fb.getDoc(fb.doc(fb.db,'vaults',fbUser.uid));
+    const hasCloud = snap.exists() && Array.isArray(snap.data().cards) && snap.data().cards.length;
+    if(mode==='reg' || !hasCloud) await fbPush(false);      // neues/leeres Konto -> lokale Daten hoch
+    else fbPull();                                          // vorhandene Cloud-Daten -> Laden anbieten
+  }catch(e){}
+}
+
+function renderFbUI(){
+  const dot=el('fb-dot'), st=el('fb-state'); if(!dot) return;
+  if(!fbConfigured()){
+    dot.className='dot off'; st.textContent='aus';
+    if(el('fb-auth'))   el('fb-auth').style.display='none';
+    if(el('fb-signed')) el('fb-signed').style.display='none';
+    return;
+  }
+  const on=!!fbUser;
+  dot.className='dot '+(on?'on':'off'); st.textContent=on?'verbunden':'bereit';
+  if(el('fb-auth'))   el('fb-auth').style.display   = on?'none':'block';
+  if(el('fb-signed')) el('fb-signed').style.display = on?'block':'none';
+  if(on && el('fb-who')) el('fb-who').textContent = fbUser.email || fbUser.uid;
+}
+
+function fbErrMsg(e){
+  const c=(e && e.code) || '';
+  if(c.includes('email-already-in-use')) return 'E-Mail bereits registriert – bitte anmelden.';
+  if(c.includes('invalid-credential')||c.includes('wrong-password')||c.includes('user-not-found')) return 'E-Mail oder Passwort falsch.';
+  if(c.includes('weak-password')) return 'Passwort zu schwach (min. 6 Zeichen).';
+  if(c.includes('network')) return 'Keine Netzverbindung.';
+  return (e && e.message) || 'Unbekannter Fehler.';
+}
+function fbFail(m){ const e=el('fb-err'); if(e){ e.textContent=m; e.style.display='block'; } else toast(m); }
+
+async function fbAuth(mode){
+  if(!fbConfigured()){ toast('Firebase-Konfiguration fehlt (Anleitung im Code)'); return; }
+  const email=(el('fb-email').value||'').trim().toLowerCase();
+  const pass=el('fb-pass').value||'';
+  if(el('fb-err')) el('fb-err').style.display='none';
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fbFail('Bitte eine gültige E-Mail eingeben.');
+  if(pass.length<6) return fbFail('Passwort muss mindestens 6 Zeichen haben.');
+  try{
+    const fb=await ensureFirebase(); if(!fb) return;
+    if(mode==='reg') await fb.register(fb.auth, email, pass);
+    else             await fb.signIn(fb.auth, email, pass);
+    el('fb-pass').value='';
+    toast(mode==='reg' ? 'Firebase-Konto erstellt ☁️' : 'Firebase: angemeldet ☁️');
+    fbInitialSync(mode);
+  }catch(e){ fbFail(fbErrMsg(e)); }
+}
+
+async function fbLogout(){
+  try{ const fb=await ensureFirebase(); if(fb) await fb.signOut(fb.auth); }catch(e){}
+  toast('Firebase: abgemeldet');
+}
+
+async function fbPush(manual){
+  const fb=await ensureFirebase();
+  if(!fb || !fbUser){ if(manual) toast('Erst bei Firebase anmelden'); return; }
+  try{
+    await fb.setDoc(fb.doc(fb.db,'vaults',fbUser.uid), { cards, stats, updated:Date.now(), count:cards.length });
+    if(manual) toast('In Cloud gesichert ☁️✓'); if(typeof markBackup==='function') markBackup();
+  }catch(e){ if(manual) toast('Cloud-Upload fehlgeschlagen'); }
+}
+
+async function fbPull(){
+  const fb=await ensureFirebase();
+  if(!fb || !fbUser){ toast('Erst bei Firebase anmelden'); return; }
+  try{
+    const snap=await fb.getDoc(fb.doc(fb.db,'vaults',fbUser.uid));
+    if(!snap.exists()){ toast('Keine Cloud-Daten für dieses Konto'); return; }
+    const d=snap.data();
+    const count=Array.isArray(d.cards)?d.cards.length:0;
+    if(await confirmDialog('Cloud-Daten laden? '+count+' Karten ersetzen die aktuelle Sammlung.')){
+      cards = Array.isArray(d.cards)?d.cards:[];
+      cards.forEach(c=>{ if(c.photo){ c.hasPhoto=true; Photos.set(c.id,c.photo); delete c.photo; } });
+      if(d.stats){ stats=d.stats; stats.xp=stats.xp||0; stats.stickers=stats.stickers||[]; }
+      store.set('gcv_cards', JSON.stringify(cards)); store.set('gcv_stats', JSON.stringify(stats));
+      renderCollection(); updateStats(); renderArenaStats(); renderStickers(); buildMonsterList();
+      toast('Aus Cloud geladen ✓');
+    }
+  }catch(e){ toast('Cloud-Download fehlgeschlagen'); }
+}
+Object.assign(window,{fbAuth,fbLogout,fbPush,fbPull});
+
+/* ============ Vault-Verschlüsselung (AES-256-GCM, nur im Browser) ============ */
+const ENC_KEY_STORE = 'gcv_vault_key';
+let _vaultCryptoKey = null;
+
+function b64ToBytes(b64){ return Uint8Array.from(atob(b64), c => c.charCodeAt(0)); }
+function bytesToB64(buf){ const b=new Uint8Array(buf); let s=''; for(let i=0;i<b.length;i+=0x8000){ s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); } return btoa(s); }
+
+async function getVaultKey(){
+  if(_vaultCryptoKey) return _vaultCryptoKey;
+  const stored = store.get(ENC_KEY_STORE);
+  if(stored){
+    try{
+      _vaultCryptoKey = await crypto.subtle.importKey('raw', b64ToBytes(stored), 'AES-GCM', true, ['encrypt','decrypt']);
+      return _vaultCryptoKey;
+    }catch(e){ /* key kaputt → neu generieren */ }
+  }
+  const key = await crypto.subtle.generateKey({name:'AES-GCM', length:256}, true, ['encrypt','decrypt']);
+  const raw = await crypto.subtle.exportKey('raw', key);
+  store.set(ENC_KEY_STORE, bytesToB64(raw));
+  _vaultCryptoKey = key;
+  return key;
+}
+
+async function encryptVault(payload){
+  const key = await getVaultKey();
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(JSON.stringify(payload));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, encoded);
+  return bytesToB64(iv) + ':' + bytesToB64(ct);
+}
+
+async function decryptVault(vaultStr){
+  const [ivB64, ctB64] = vaultStr.split(':');
+  if(!ivB64 || !ctB64) throw new Error('Ungültiges Format');
+  const key = await getVaultKey();
+  const iv = b64ToBytes(ivB64);
+  const ct = b64ToBytes(ctB64);
+  const plain = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ct);
+  return JSON.parse(new TextDecoder().decode(plain));
+}
+
+function exportVaultKey(){
+  const k = store.get(ENC_KEY_STORE);
+  if(!k){ toast('Noch kein Schlüssel erzeugt'); return; }
+  const a = document.createElement('a');
+  a.href = 'data:text/plain;charset=utf-8,' + encodeURIComponent('GCV-KEY:' + k);
+  a.download = 'vault-key.txt'; a.click();
+  toast('Schlüssel-Datei heruntergeladen – sicher aufbewahren!');
+}
+
+async function importVaultKey(){
+  const raw = (prompt('Vault-Schlüssel einfügen (Inhalt der vault-key.txt):') || '').trim();
+  const key = raw.startsWith('GCV-KEY:') ? raw.slice(8) : raw;
+  if(key.length < 40){ toast('Ungültiger Schlüssel'); return; }
+  try{
+    const k = await crypto.subtle.importKey('raw', b64ToBytes(key), 'AES-GCM', true, ['encrypt','decrypt']);
+    store.set(ENC_KEY_STORE, key);
+    _vaultCryptoKey = k;
+    toast('Schlüssel importiert – Server-Daten jetzt laden');
+  }catch(e){ toast('Schlüssel-Import fehlgeschlagen'); }
+}
+
+async function pushToServer(manual){
+  if(!await serverPing()){ if(manual) toast('Kein Server erreichbar'); return; }
+  try{
+    const uid = syncUid();
+    let body;
+    if(uid === 'guest'){
+      body = JSON.stringify({cards, stats});
+    } else {
+      const vault = await encryptVault({cards, stats});
+      body = JSON.stringify({encrypted: true, vault, count: cards.length});
+    }
+    const r=await fetch(serverUrl.replace(/\/$/,'')+'/api/data/'+encodeURIComponent(uid),{
+      method:'PUT', headers:{'Content-Type':'application/json'}, body
+    });
+    if(!r.ok) throw 0;
+    if(manual) toast('Auf Server gesichert 🔒'); if(typeof markBackup==='function') markBackup();
+  }catch(e){ if(manual) toast('Upload fehlgeschlagen'); }
+}
+
+async function pullFromServer(){
+  if(!await serverPing()){ toast('Kein Server erreichbar'); return; }
+  try{
+    const r=await fetch(serverUrl.replace(/\/$/,'')+'/api/data/'+encodeURIComponent(syncUid()),{cache:'no-store'});
+    if(!r.ok) throw 0;
+    const d=await r.json();
+    let payload;
+    if(d && d.encrypted === true && d.vault){
+      try{ payload = await decryptVault(d.vault); }
+      catch(e){
+        toast('Entschlüsselung fehlgeschlagen – falscher Schlüssel?');
+        return;
+      }
+    } else if(d && Array.isArray(d.cards)){
+      payload = d;
+    } else {
+      toast('Keine Server-Daten für diesen Nutzer'); return;
+    }
+    const count = Array.isArray(payload.cards) ? payload.cards.length : 0;
+    if(await confirmDialog('Server-Daten laden? '+count+' Karten ersetzen die aktuelle Sammlung.')){
+      cards=payload.cards||[]; cards.forEach(c=>{ if(c.photo){ c.hasPhoto=true; Photos.set(c.id,c.photo); delete c.photo; } });
+      if(payload.stats){ stats=payload.stats; stats.xp=stats.xp||0; stats.stickers=stats.stickers||[]; }
+      store.set('gcv_cards', JSON.stringify(cards)); store.set('gcv_stats', JSON.stringify(stats));
+      renderCollection(); updateStats(); renderArenaStats(); renderStickers(); buildMonsterList();
+      toast('Vom Server geladen ✓');
+    }
+  }catch(e){ toast('Download fehlgeschlagen'); }
+}
+
+/* ============ Anmeldung (Google + lokales E-Mail-Konto + Gast) ============
+   GOOGLE: Echte Google-Anmeldung braucht eine OAuth-Client-ID.
+   1) https://console.cloud.google.com  → Projekt → "Anmeldedaten" → OAuth-Client-ID (Webanwendung)
+   2) Autorisierte JavaScript-Quellen = deine GitHub-Pages-URL (z. B. https://NUTZER.github.io)
+   3) Die Client-ID unten eintragen.
+   FIREBASE (für echte, geräteübergreifende Konten – Google + E-Mail mit Server):
+   Firebase Auth einbinden (kostenlos), ersetzt das lokale E-Mail-Konto. Bei Bedarf liefere ich die Variante.
+================================================================ */
+const GOOGLE_CLIENT_ID = ''; // ← hier deine Google OAuth Client-ID eintragen
+
+let currentUser = load('gcv_user', null); // {uid,name,email,provider,avatar}
+
+async function sha256(str){
+  try{
+    const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }catch(e){
+    let h=0; for(let i=0;i<str.length;i++){ h=(Math.imul(h,31)+str.charCodeAt(i))>>>0; } return 'x'+h.toString(16);
+  }
+}
+
+function openAuth(){ renderAuth(); el('auth-modal').classList.add('show'); }
+function closeAuth(){ el('auth-modal').classList.remove('show'); }
+function authMode(m){
+  el('tab-login').classList.toggle('on', m==='login');
+  el('tab-reg').classList.toggle('on', m==='reg');
+  el('auth-name-wrap').style.display = m==='reg' ? 'block' : 'none';
+  const sub=el('auth-submit'); sub.textContent = m==='reg' ? 'Konto erstellen' : 'Anmelden'; sub.dataset.mode=m;
+  el('auth-err').style.display='none';
+}
+function renderAuth(){
+  if(currentUser){
+    el('auth-logged-in').style.display='block'; el('auth-logged-out').style.display='none';
+    const who=currentUser.provider==='guest' ? 'Gast' : (currentUser.name + (currentUser.email?(' · '+currentUser.email):''));
+    el('auth-who').textContent=who;
+  } else {
+    el('auth-logged-in').style.display='none'; el('auth-logged-out').style.display='block';
+    authMode('login');
+  }
+  const note=el('google-note');
+  if(!GOOGLE_CLIENT_ID){ note.style.display='block'; note.textContent='„Mit Google anmelden" benötigt einmalig eine Google-Client-ID (Anleitung im Code).'; }
+  else note.style.display='none';
+}
+
+async function emailAuth(){
+  const mode=el('auth-submit').dataset.mode||'login';
+  const email=(el('auth-email').value||'').trim().toLowerCase();
+  const pass=el('auth-pass').value||'';
+  const err=el('auth-err'); const fail=m=>{ err.textContent=m; err.style.display='block'; };
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return fail('Bitte eine gültige E-Mail eingeben.');
+  if(pass.length<6) return fail('Passwort muss mindestens 6 Zeichen haben.');
+  const accounts=load('gcv_accounts', {});
+  const hash=await sha256(email+'::'+pass);
+  if(mode==='reg'){
+    if(accounts[email]) return fail('Konto existiert bereits – bitte anmelden.');
+    const name=(el('auth-name').value||'').trim() || email.split('@')[0];
+    accounts[email]={hash, name}; store.set('gcv_accounts', JSON.stringify(accounts));
+    setUser({uid:'em_'+email, name, email, provider:'email', avatar:''});
+  } else {
+    const acc=accounts[email];
+    if(!acc) return fail('Kein Konto mit dieser E-Mail. Bitte zuerst registrieren.');
+    if(acc.hash!==hash) return fail('Falsches Passwort.');
+    setUser({uid:'em_'+email, name:acc.name, email, provider:'email', avatar:''});
+  }
+}
+function continueGuest(){ setUser({uid:'guest', name:'Gast', email:'', provider:'guest', avatar:''}); }
+
+function setUser(u){
+  currentUser=u; store.set('gcv_user', JSON.stringify(u));
+  renderProfile(); renderAuth(); closeAuth();
+  toast(u.provider==='guest' ? 'Als Gast aktiv' : ('Angemeldet als '+u.name));
+}
+function logout(){
+  const wasReplit = currentUser && currentUser.provider==='replit';
+  const wasFirebase = currentUser && currentUser.provider==='firebase';
+  currentUser=null; store.set('gcv_user', JSON.stringify(null));
+  renderProfile(); renderAuth(); toast('Abgemeldet');
+  if(wasFirebase && typeof fbLogout==='function') fbLogout(); // Firebase-Sitzung mit beenden
+  if(wasReplit){ window.location.href='/api/logout'; }
+}
+
+function replitSignIn(){
+  window.location.href='/api/login?returnTo=/';
+}
+
+async function checkReplitSession(){
+  try{
+    const r=await fetch('/api/auth/user',{credentials:'include',cache:'no-store'});
+    if(!r.ok) return;
+    const d=await r.json();
+    if(d && d.user && d.user.id){
+      const u=d.user;
+      const existing=currentUser;
+      if(existing && existing.provider==='replit' && existing.uid===u.id) return;
+      const mapped={uid:u.id, name:u.name||'Nutzer', email:u.email||'', provider:'replit', avatar:u.avatarUrl||''};
+      currentUser=mapped; store.set('gcv_user', JSON.stringify(mapped));
+      renderProfile(); renderAuth();
+      if(!existing || existing.provider!=='replit') toast('Angemeldet als '+mapped.name);
+    }
+  }catch(e){ /* kein Server → ignorieren */ }
+}
+function renderProfile(){
+  const av=el('profile-av'), nm=el('profile-name');
+  if(currentUser && currentUser.provider!=='guest'){
+    nm.textContent=currentUser.name;
+    if(currentUser.avatar) av.innerHTML='<img src="'+currentUser.avatar+'" alt="">';
+    else { av.textContent=(currentUser.name[0]||'?').toUpperCase(); }
+  } else if(currentUser && currentUser.provider==='guest'){
+    nm.textContent='Gast'; av.textContent='G';
+  } else { nm.textContent='Anmelden'; av.textContent='?'; }
+}
+
+/* Google Identity Services */
+let gsiLoaded=false;
+async function googleSignIn(){
+  if(!GOOGLE_CLIENT_ID){ toast('Google-Client-ID fehlt – siehe Hinweis im Login'); return; }
+  try{
+    if(!gsiLoaded){
+      await new Promise((res,rej)=>{ const s=document.createElement('script');
+        s.src='https://accounts.google.com/gsi/client'; s.onload=res; s.onerror=rej; document.head.appendChild(s); });
+      gsiLoaded=true;
+    }
+    google.accounts.id.initialize({ client_id:GOOGLE_CLIENT_ID, callback:onGoogleCredential });
+    google.accounts.id.prompt();
+  }catch(e){ toast('Google-Anmeldung nicht verfügbar (offline?)'); }
+}
+function onGoogleCredential(resp){
+  try{
+    const b=resp.credential.split('.')[1].replace(/-/g,'+').replace(/_/g,'/');
+    const p=JSON.parse(decodeURIComponent(escape(atob(b)))); // nur zur Anzeige; nicht serverseitig verifiziert
+    setUser({uid:'g_'+(p.sub||p.email), name:p.name||p.email, email:p.email||'', provider:'google', avatar:p.picture||''});
+  }catch(e){ toast('Google-Login fehlgeschlagen'); }
+}
+
+/* ============ Level / XP / Sticker ============ */
+const LEVELS=[0,40,100,180,280,420,600];               // XP-Schwellen Lvl 1..7
+const STICKERS={                                       // Belohnungen je Level
+  2:{id:'lehrling',    label:'Vault-Lehrling',  sub:'Level 2'},
+  3:{id:'fgwl47',      label:'F.G.W.L #47',     sub:'Level 3 · Spezial'},
+  4:{id:'veteran',     label:'Arena-Veteran',   sub:'Level 4'},
+  5:{id:'goldsammler', label:'Goldener Sammler',sub:'Level 5'}
+};
+const SECRET_STICKERS={
+  glasswing:{label:'Glasswing-Bezwinger', sub:'Geheim-Boss besiegt'},
+  konami:   {label:'Konami-Kommandant',   sub:'Geheimcode entdeckt'},
+  fgwlcode: {label:'Code 47',             sub:'„FGWL" gefunden'}
+};
+function levelFor(xp){ let lv=1; for(let i=0;i<LEVELS.length;i++){ if(xp>=LEVELS[i]) lv=i+1; } return lv; }
+function nextThreshold(xp){ for(const t of LEVELS){ if(xp<t) return t; } return LEVELS[LEVELS.length-1]; }
+
+function grantSticker(id, label, sub){
+  if(stats.stickers.includes(id)) return false;
+  stats.stickers.push(id); save(); renderStickers(); celebrateSticker(label, sub||''); return true;
+}
+function addXP(amount){
+  const before=levelFor(stats.xp);
+  stats.xp = Math.max(0, stats.xp + amount);
+  const after=levelFor(stats.xp);
+  if(after>before){
+    for(let lv=before+1; lv<=after; lv++){
+      toast('⭐ Level '+lv+' erreicht!');
+      if(STICKERS[lv]) grantSticker(STICKERS[lv].id, STICKERS[lv].label, STICKERS[lv].sub);
+    }
+  }
+  save(); renderArenaStats();
+}
+async function celebrateSticker(label, sub){
+  el('sticker-big').textContent=label;
+  el('sticker-sub').textContent=sub||'Glückwunsch!';
+  el('sticker-modal').classList.add('show');
+  const g=await ensureGSAP();
+  if(g){ try{ g.fromTo('#sticker-big',{scale:.3,rotate:-8,opacity:0},{scale:1,rotate:0,opacity:1,duration:.6,ease:'back.out(1.7)'}); }catch(e){} }
+}
+function renderStickers(){
+  const shelf=el('sticker-shelf'); if(!shelf) return;
+  const cells=[];
+  for(const lv of Object.keys(STICKERS)){
+    const s=STICKERS[lv]; const got=stats.stickers.includes(s.id);
+    const cls = s.id==='fgwl47' && got ? 'stk fgwl' : ('stk '+(got?'unlocked':'locked'));
+    cells.push(`<div class="${cls}">${got?esc(s.label):'???'}<small>${got?esc(s.sub):'Level '+lv}</small></div>`);
+  }
+  for(const id of Object.keys(SECRET_STICKERS)){
+    if(stats.stickers.includes(id)){ const s=SECRET_STICKERS[id]; cells.push(`<div class="stk unlocked">${esc(s.label)}<small>${esc(s.sub)}</small></div>`); }
+  }
+  shelf.innerHTML=cells.join('');
+}
+
+/* ============ Admin-Modus ============ */
+let isAdmin = store.get('gcv_admin')==='1';
+function openAdmin(){ renderAdmin(); el('admin-modal').classList.add('show'); if(isAdmin) adminLoadBackups(); }
+function closeAdmin(){ el('admin-modal').classList.remove('show'); }
+function renderAdmin(){
+  const body=el('admin-body');
+  if(!isAdmin){
+    body.innerHTML=`
+      <p class="muted" style="font-size:.82rem;margin-top:0">Admin-Code eingeben, um den Modus freizuschalten.</p>
+      <input id="admin-code" type="password" placeholder="Admin-Code">
+      <div id="admin-err" class="neg" style="font-size:.76rem;margin-top:6px;display:none"></div>
+      <div style="height:10px"></div>
+      <button class="btn" onclick="adminUnlock()">Freischalten</button>`;
+    return;
+  }
+  const value=cards.reduce((s,c)=>s+(c.value||0),0);
+  const accounts=load('gcv_accounts',{});
+  const accList=Object.keys(accounts);
+  body.innerHTML=`
+    <div class="adm-stat"><span>Angemeldet</span><b>${currentUser?esc(currentUser.name):'—'}</b></div>
+    <div class="adm-stat"><span>Karten</span><b>${cards.length}</b></div>
+    <div class="adm-stat"><span>Sammlungswert</span><b>${eur(value)}</b></div>
+    <div class="adm-stat"><span>Level · XP</span><b>${levelFor(stats.xp)} · ${stats.xp}</b></div>
+    <div class="adm-stat"><span>Stickers</span><b>${stats.stickers.length}</b></div>
+    <div class="adm-stat"><span>Server</span><b>${serverOnline?'verbunden':'offline'}</b></div>
+    <div class="adm-stat"><span>Lokale Konten</span><b>${accList.length}</b></div>
+    ${accList.length?`<div class="muted" style="font-size:.72rem;margin:6px 0">${accList.map(e=>esc(e)).join(', ')}</div>`:''}
+    <div style="height:10px"></div>
+    <button class="ghost gold mini" style="width:100%" onclick="pushToServer(true)">Auf Server sichern</button>
+    <button class="ghost mini" style="width:100%;margin-top:8px" onclick="adminUnlockAllStickers()">Alle Sticker freischalten</button>
+    <button class="ghost mini" style="width:100%;margin-top:8px" onclick="exportJSON()">Alle Daten exportieren</button>
+    <button class="ghost mini" style="width:100%;margin-top:8px;color:var(--red);border-color:var(--red)" onclick="adminReset()">Sammlung zurücksetzen</button>
+    <hr style="border-color:var(--border);margin:14px 0 10px">
+    <div style="font-size:.8rem;color:var(--gold);font-weight:700;margin-bottom:8px">🗄️ Server-Backups</div>
+    <div id="adm-backup-list" style="font-size:.75rem;color:var(--muted);margin-bottom:8px">Lade…</div>
+    <button class="ghost mini" style="width:100%" onclick="adminTriggerBackup()">⚡ Backup jetzt erstellen</button>
+    <div style="height:10px"></div>
+    <button class="ghost mini" style="width:100%;margin-top:0" onclick="adminLogout()">Admin-Modus verlassen</button>`;
+}
+function adminUnlock(){
+  const v=(el('admin-code').value||'').trim();
+  if(v===ADMIN_CODE){ isAdmin=true; store.set('gcv_admin','1'); toast('Admin-Modus aktiv 🛠️'); renderAdmin(); adminLoadBackups(); }
+  else { const e=el('admin-err'); e.textContent='Falscher Code.'; e.style.display='block'; }
+}
+function adminLogout(){ isAdmin=false; store.set('gcv_admin','0'); toast('Admin-Modus verlassen'); renderAdmin(); }
+
+async function adminLoadBackups(){
+  const box=el('adm-backup-list');
+  if(!box) return;
+  try {
+    const r=await fetch('/api/admin/backups',{headers:{'x-admin-code':ADMIN_CODE}});
+    if(!r.ok){ box.textContent='Fehler beim Laden.'; return; }
+    const {backups}=await r.json();
+    if(!backups.length){ box.innerHTML='<span>Noch keine Backups vorhanden.</span>'; return; }
+    box.innerHTML=backups.map(b=>{
+      const date=new Date(b.created).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+      const kb=(b.size/1024).toFixed(0);
+      return `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border)">
+        <span style="color:var(--fg)">${date} <span style="color:var(--muted)">(${kb} KB)</span></span>
+        <button class="ghost mini" style="padding:2px 8px;font-size:.7rem" onclick="adminRestoreBackup('${esc(b.name)}')">↩ Restore</button>
+      </div>`;
+    }).join('');
+  } catch(e){ if(box) box.textContent='Server nicht erreichbar.'; }
+}
+
+async function adminTriggerBackup(){
+  const box=el('adm-backup-list');
+  if(box) box.textContent='Erstelle Backup…';
+  try {
+    const r=await fetch('/api/admin/backups/trigger',{method:'POST',headers:{'x-admin-code':ADMIN_CODE}});
+    if(r.ok){ toast('Backup erstellt ✅'); adminLoadBackups(); }
+    else { toast('Backup fehlgeschlagen ❌'); }
+  } catch(e){ toast('Server nicht erreichbar ❌'); }
+}
+
+async function adminRestoreBackup(name){
+  if(!await confirmDialog(`Wirklich auf Backup vom "${name.replace('vault-data-','').replace('.json','')}" zurücksetzen?\n\nAchtung: Alle aktuellen Server-Daten werden überschrieben!`)) return;
+  try {
+    const r=await fetch('/api/admin/backups/restore',{
+      method:'POST',
+      headers:{'x-admin-code':ADMIN_CODE,'Content-Type':'application/json'},
+      body:JSON.stringify({name})
+    });
+    if(r.ok){ toast('Wiederhergestellt ✅ — neu laden empfohlen'); adminLoadBackups(); }
+    else { const d=await r.json(); toast('Fehler: '+(d.error||'Unbekannt')+ ' ❌'); }
+  } catch(e){ toast('Server nicht erreichbar ❌'); }
+}
+function adminUnlockAllStickers(){
+  Object.values(STICKERS).forEach(s=>{ if(!stats.stickers.includes(s.id)) stats.stickers.push(s.id); });
+  Object.keys(SECRET_STICKERS).forEach(id=>{ if(!stats.stickers.includes(id)) stats.stickers.push(id); });
+  save(); renderStickers(); toast('Alle Sticker freigeschaltet'); renderAdmin();
+}
+async function adminReset(){
+  if(await confirmDialog('Wirklich ALLE Karten löschen? Das kann nicht rückgängig gemacht werden.')){
+    cards=[]; save(); renderCollection(); updateStats(); buildMonsterList(); toast('Sammlung zurückgesetzt'); renderAdmin();
+  }
+}
+
+/* ============ Helfer ============ */
+function parseEuro(s){
+  if(s==null) return 0;
+  s=String(s).trim().replace(/[€\s]/g,'');
+  if(s==='') return 0;
+  // deutsches Format: 1.234,56  → Punkt = Tausender, Komma = Dezimal
+  if(s.includes(',')){ s=s.replace(/\./g,'').replace(',','.'); }
+  // kein Komma, aber reine Tausender-Gruppierung (2.000 / 1.000.000) → Punkte sind Tausender
+  else if(/^\d{1,3}(\.\d{3})+$/.test(s)){ s=s.replace(/\./g,''); }
+  const n=parseFloat(s); return isFinite(n)?n:0;
+}
+function eur(n){ return (Number(n)||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'; }
+function el(id){ return document.getElementById(id); }
+function toast(msg){ const t=el('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2400); }
+function confirmDialog(text){
+  return new Promise(res=>{
+    el('modal-text').textContent=text; el('modal').classList.add('show');
+    const ok=el('modal-ok'), cancel=el('modal-cancel');
+    const done=v=>{ el('modal').classList.remove('show'); ok.onclick=null; cancel.onclick=null; res(v); };
+    ok.onclick=()=>done(true); cancel.onclick=()=>done(false);
+  });
+}
+const condLabel={gem:'Gem Mint',nm:'Near Mint',ex:'Excellent',pl:'Gespielt'};
+const gameLabel={pkmn:'Pokémon',ygo:'Yu-Gi-Oh!'};
+const CATS={
+  pkmn:['Pokémon','Trainer','Energie','Spezial / Promo','Versiegelt'],
+  ygo:['Monster','Zauber','Falle','Extra Deck','Versiegelt']
+};
+function syncCats(){
+  const g=el('c-game').value;
+  const prev=el('c-cat').value;
+  el('c-cat').innerHTML=CATS[g].map(c=>`<option>${c}</option>`).join('');
+  if(CATS[g].includes(prev)) el('c-cat').value=prev;
+}
+
+/* ============ Navigation ============ */
+function tab(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  el('p-'+name).classList.add('active');
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(name==='polish') buildPolish();
+  if(name==='arena') buildMonsterList();
+  if(name==='nebula') loadNebula();
+}
+
+/* ============ Tab 1 · Sammlung ============ */
+let pendingPhoto=null;
+function setPhoto(file){
+  if(!file) return;
+  const pv=el('photo-preview');
+  pv.style.display='flex'; pv.innerHTML='<span class="muted">Bild wird verarbeitet…</span>';
+  compressImage(file, dataUrl=>{
+    if(dataUrl){
+      pendingPhoto=dataUrl;
+      pv.innerHTML=`<img src="${dataUrl}" alt=""><span>Foto übernommen</span><button class="x" onclick="clearPhoto()" aria-label="Foto entfernen">✕</button>`;
+    } else { pv.style.display='none'; toast('Bild konnte nicht geladen werden'); }
+  });
+}
+function clearPhoto(){
+  pendingPhoto=null;
+  const pv=el('photo-preview'); pv.style.display='none'; pv.innerHTML='';
+  el('c-cam').value=''; el('c-photo').value='';
+}
+
+function addCard(){
+  const name=el('c-name').value.trim();
+  if(!name){ toast('Bitte eine Beschreibung eingeben'); return; }
+  const card={
+    id:Date.now()+'-'+Math.random().toString(36).slice(2,6),
+    name, set:el('c-set').value.trim(), num:el('c-num').value.trim(),
+    cost:parseEuro(el('c-cost').value), value:parseEuro(el('c-val').value),
+    cond:el('c-cond').value, cat:el('c-cat').value, game:el('c-game').value,
+    hasPhoto:!!pendingPhoto, ts:Date.now()
+  };
+  cards.unshift(card);
+  if(pendingPhoto) Photos.set(card.id, pendingPhoto);
+  scheduleSave(); updateStats();
+  const q=(el('c-search').value||''), sort=el('c-sort').value;
+  if(!q && sort==='date'){
+    const box=el('collection'), first=box.firstElementChild;
+    if(first && first.classList.contains('empty')) box.innerHTML=itemHTML(card); else box.insertAdjacentHTML('afterbegin', itemHTML(card));
+    el('coll-count').textContent=cards.length; /* neues Foto ist bereits im Cache -> kein N-Hydrate */
+  } else { renderCollection(); }
+  ['c-name','c-set','c-num','c-cost','c-val'].forEach(i=>el(i).value='');
+  clearPhoto();
+  toast('„'+name+'" im Vault gespeichert ✓');
+}
+
+function compressImage(file, cb){
+  const r=new FileReader();
+  r.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const max=420, sc=Math.min(1, max/Math.max(img.width,img.height));
+      const cv=document.createElement('canvas');
+      cv.width=img.width*sc; cv.height=img.height*sc;
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      try{ cb(cv.toDataURL('image/jpeg',0.7)); }catch(err){ cb(null); }
+    };
+    img.onerror=()=>cb(null);
+    img.src=e.target.result;
+  };
+  r.onerror=()=>cb(null);
+  r.readAsDataURL(file);
+}
+
+function itemHTML(c){
+  const pl=(c.value||0)-(c.cost||0);
+  const plc=pl>=0?'pos':'neg';
+  const img=(c.hasPhoto&&Photos.has(c.id))?`<img src="${Photos.read(c.id)}" alt="">`:c.hasPhoto?`<div class="ph" id="ph-${c.id}">…</div>`:`<div class="ph">${esc(c.name).slice(0,10)}</div>`;
+  const badge=c.game?`<span class="badge ${c.game}">${c.game==='ygo'?'YGO':'PKM'}</span> `:'';
+  return `<div class="item">
+      ${img}
+      <div class="meta">
+        <b>${badge}${esc(c.name)}</b>
+        <small>${esc(c.set||'—')} · ${esc(c.num||'')} · ${condLabel[c.cond]||c.cond}</small>
+      </div>
+      <div class="val">
+        <b>${eur(c.value)}</b><br>
+        <small class="${plc}">${pl>=0?'+':''}${eur(pl)}</small>
+      </div>
+      <button class="x" onclick="delCard('${c.id}')" aria-label="Löschen">✕</button>
+    </div>`;
+}
+function renderCollection(){
+  const q=(el('c-search').value||'').toLowerCase();
+  const sort=el('c-sort').value;
+  let list=cards.filter(c=> (c.name+' '+(c.set||'')+' '+(c.num||'')).toLowerCase().includes(q));
+  list.sort((a,b)=>{
+    if(sort==='value') return (b.value||0)-(a.value||0);
+    if(sort==='name')  return a.name.localeCompare(b.name,'de');
+    if(sort==='pl')    return ((b.value-b.cost)||0)-((a.value-a.cost)||0);
+    return b.ts-a.ts;
+  });
+  el('coll-count').textContent = q ? (list.length+' / '+cards.length) : cards.length;
+  const box=el('collection');
+  if(!list.length){ box.innerHTML='<div class="empty">Noch keine Karten'+(q?' für „'+q+'"':'')+'.<br>Leg deine erste oben in den Vault.</div>'; return; }
+  box.innerHTML=list.map(itemHTML).join('');
+  hydratePhotos();
+}
+function esc(s){ return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+async function delCard(id){
+  const c=cards.find(x=>x.id===id); if(!c) return;
+  if(await confirmDialog('„'+c.name+'" wirklich aus dem Vault entfernen?')){
+    cards=cards.filter(x=>x.id!==id); if(c.hasPhoto) Photos.del(id); save(); renderCollection(); updateStats();
+    toast('Karte entfernt');
+  }
+}
+
+function updateStats(){
+  const count=cards.length;
+  const value=cards.reduce((s,c)=>s+(c.value||0),0);
+  const cost=cards.reduce((s,c)=>s+(c.cost||0),0);
+  const pl=value-cost;
+  el('s-count').textContent=count;
+  el('s-value').textContent=eur(value);
+  el('s-cost').textContent=eur(cost);
+  const e=el('s-pl'); e.textContent=(pl>=0?'+':'')+eur(pl);
+  e.className=pl>=0?'pos':'neg';
+}
+
+async function exportJSON(){
+  const out=[];
+  for(const c of cards){ const cc=Object.assign({},c); if(c.hasPhoto){ const u=await Photos.get(c.id); if(u) cc.photo=u; } out.push(cc); }
+  const data=JSON.stringify({app:'Grade-Check Vault',exported:new Date().toISOString(),cards:out},null,2);
+  try{
+    const blob=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='grade-check-vault-'+new Date().toISOString().slice(0,10)+'.json';
+    a.click(); URL.revokeObjectURL(a.href);
+    toast('Export gestartet ⬇'); if(typeof markBackup==='function') markBackup();
+  }catch(e){
+    navigator.clipboard?.writeText(data).then(()=>toast('In Zwischenablage kopiert'),()=>toast('Export nicht möglich'));
+  }
+}
+function importJSON(ev){
+  const f=ev.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=async e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      const arr=Array.isArray(d)?d:d.cards;
+      if(!Array.isArray(arr)) throw 0;
+      if(await confirmDialog(arr.length+' Karten importieren? Bestehende bleiben erhalten.')){
+        arr.forEach(c=>{ if(!c.id) c.id=Date.now()+'-'+Math.random().toString(36).slice(2,6); if(c.photo){ c.hasPhoto=true; Photos.set(c.id,c.photo); delete c.photo; } cards.unshift(c); });
+        save(); renderCollection(); updateStats(); toast(arr.length+' Karten importiert ✓');
+      }
+    }catch(err){ toast('Datei nicht lesbar'); }
+    ev.target.value='';
+  };
+  r.readAsText(f);
+}
+
+/* ============ Tab 2 · Scan & API ============ */
+let apiSource='pkmn';
+function setSource(s){
+  apiSource=s;
+  document.querySelectorAll('#api-src button').forEach(b=>b.classList.toggle('on',b.dataset.src===s));
+  el('api-q').placeholder = s==='ygo' ? 'z. B. Blauäugiger Drache / Dunkler Magier'
+    : s==='both' ? 'Name aus beiden Datenbanken' : 'z. B. Glurak / Pikachu';
+  el('api-results').innerHTML='';
+}
+
+const DEMO_CARDS=[
+  {name:'Glurak ex',set:'Obsidianflammen',num:'199/197',img:'',game:'pkmn'},
+  {name:'Pikachu',set:'Silberne Sturmwinde',num:'196/195',img:'',game:'pkmn'},
+  {name:'Mewtu V',set:'Strahlende Sterne',num:'030/172',img:'',game:'pkmn'},
+  {name:'Glaziola VMAX',set:'Drachenwandel',num:'064/203',img:'',game:'pkmn'}
+];
+const DEMO_YGO=[
+  {name:'Blauäugiger weißer Drache',set:'Legend of Blue Eyes',num:'LOB-001',img:'',value:0,game:'ygo'},
+  {name:'Dunkler Magier',set:'Legend of Blue Eyes',num:'LOB-005',img:'',value:0,game:'ygo'},
+  {name:'Exodia der Verbotene',set:'Legend of Blue Eyes',num:'LOB-124',img:'',value:0,game:'ygo'},
+  {name:'Pot of Greed',set:'Legend of Blue Eyes',num:'LOB-119',img:'',value:0,game:'ygo'}
+];
+
+// Proxy-URL bauen (Key bleibt serverseitig); null = kein Server -> direkt
+function proxyUrl(service, path){
+  const base=(serverUrl||'').replace(/\/$/,'');
+  return base ? (base+'/api/proxy/'+service+'/'+path) : null;
+}
+// Pokémon (TCGdex) – Proxy zuerst, dann direkt, dann Demo
+async function pkmnFetch(q){
+  const path='de/cards?name=like:'+encodeURIComponent(q);
+  const tries=[]; const p=proxyUrl('tcgdex',path); if(p) tries.push(p);
+  tries.push('https://api.tcgdex.net/v2/'+path);
+  for(const u of tries){
+    try{
+      const res=await fetch(u,{cache:'no-store'}); if(!res.ok) continue;
+      const data=await res.json();
+      if(!Array.isArray(data)||!data.length) continue;
+      return {list:data.slice(0,12).map(c=>({name:c.name,num:c.localId||'',img:c.image?c.image+'/low.webp':'',set:'',game:'pkmn'})), demo:false};
+    }catch(e){}
+  }
+  const local=DEMO_CARDS.filter(c=>c.name.toLowerCase().includes(q.toLowerCase()));
+  return {list:local.length?local:DEMO_CARDS, demo:true};
+}
+// Yu-Gi-Oh (YGOPRODeck) – Proxy zuerst (DE/Std), dann direkt, dann Demo
+async function ygoFetch(q){
+  const enc=encodeURIComponent(q);
+  const paths=['cardinfo.php?language=de&fname='+enc,'cardinfo.php?fname='+enc];
+  const tries=[];
+  for(const pa of paths){ const p=proxyUrl('ygo',pa); if(p) tries.push(p); }
+  for(const pa of paths){ tries.push('https://db.ygoprodeck.com/api/v7/'+pa); }
+  for(const u of tries){
+    try{
+      const res=await fetch(u,{cache:'no-store'}); if(!res.ok) continue;
+      const json=await res.json(); const data=json && json.data;
+      if(!Array.isArray(data)||!data.length) continue;
+      const list=data.slice(0,12).map(c=>{
+        const imgs=c.card_images&&c.card_images[0];
+        const set =c.card_sets&&c.card_sets[0];
+        const pr  =c.card_prices&&c.card_prices[0];
+        const price=pr?parseFloat(pr.cardmarket_price)||0:0;
+        return {name:c.name, set:set?set.set_name:'', num:set?set.set_code:'',
+          img:imgs?(imgs.image_url_small||imgs.image_url):'', value:price, game:'ygo'};
+      });
+      return {list, demo:false};
+    }catch(e){}
+  }
+  const local=DEMO_YGO.filter(c=>c.name.toLowerCase().includes(q.toLowerCase()));
+  return {list:local.length?local:DEMO_YGO, demo:true};
+}
+
+async function apiSearch(){
+  const q=el('api-q').value.trim();
+  if(!q){ toast('Bitte einen Namen eingeben'); return; }
+  checkEgg(q);
+  el('api-results').innerHTML='<div class="empty">Suche läuft…</div>';
+  let results=[], demo=false;
+  if(apiSource==='pkmn'){ const r=await pkmnFetch(q); results=r.list; demo=r.demo; }
+  else if(apiSource==='ygo'){ const r=await ygoFetch(q); results=r.list; demo=r.demo; }
+  else { // beide gleichzeitig
+    const [p,y]=await Promise.all([pkmnFetch(q), ygoFetch(q)]);
+    results=[...p.list, ...y.list]; demo=p.demo||y.demo;
+  }
+  renderApi(results, demo);
+}
+
+function renderApi(list, demo){
+  const box=el('api-results');
+  if(!list.length){ box.innerHTML='<div class="empty">Keine Treffer.</div>'; return; }
+  box.innerHTML=(demo?'<div class="muted" style="font-size:.74rem;margin-bottom:6px">Offline – Demo-Daten:</div>':'')+
+    list.map(c=>{
+      const badge=`<span class="badge ${c.game||'pkmn'}">${c.game==='ygo'?'YGO':'PKM'}</span> `;
+      return `<div class="item">
+      ${c.img?`<img src="${c.img}" alt="">`:'<div class="ph">Karte</div>'}
+      <div class="meta"><b>${badge}${esc(c.name)}</b><small>${esc(c.set||'')} ${esc(c.num||'')}</small></div>
+      <button class="ghost gold mini" onclick='useApi(${JSON.stringify(c).replace(/'/g,"&#39;")})'>Übernehmen</button>
+    </div>`;}).join('');
+}
+function useApi(c){
+  el('c-name').value=c.name||''; el('c-set').value=c.set||''; el('c-num').value=c.num||'';
+  el('c-game').value = c.game==='ygo' ? 'ygo' : 'pkmn';
+  syncCats();
+  if(c.value && c.value>0){ el('c-val').value=String(c.value).replace('.',','); }
+  tab('sammlung');
+  toast(c.value>0 ? 'Übernommen – Marktwert vorausgefüllt' : 'In Formular übernommen – Preise ergänzen');
+}
+
+/* Scannen direkt aus der Suche: Foto → OCR → automatische Suche (beide DBs möglich) */
+let scanBusy=false;
+async function scanToSearch(file){
+  if(!file || scanBusy) return;
+  scanBusy=true;
+  const out=el('scan-status'); out.style.display='block';
+  out.textContent='Lade Texterkennung…';
+  try{
+    if(!window.Tesseract){
+      await new Promise((res,rej)=>{
+        const s=document.createElement('script');
+        s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+        s.onload=res; s.onerror=rej; document.head.appendChild(s);
+      });
+    }
+    out.textContent='Erkenne Kartennamen… (kann 10–20 s dauern)';
+    // deu+eng deckt deutsche und englische (Yu-Gi-Oh) Kartennamen ab
+    const {data}=await Tesseract.recognize(file,'deu+eng');
+    const lines=(data.text||'').split('\n').map(s=>s.trim()).filter(s=>s.length>2);
+    const guess=(lines.sort((a,b)=>b.length-a.length)[0]||'').replace(/[^A-Za-zÄÖÜäöüß0-9 \-!.]/g,'').trim();
+    if(guess){
+      el('api-q').value=guess;
+      out.innerHTML='Erkannt: <b style="color:var(--gold)">'+esc(guess)+'</b> – suche…';
+      await apiSearch();
+      out.style.display='none';
+    } else out.textContent='Kein Text erkannt. Bitte bei besserem Licht / gerader Karte erneut versuchen.';
+  }catch(e){
+    out.textContent='Texterkennung nicht verfügbar (offline?). Bitte Namen manuell eingeben.';
+  }
+  el('api-cam').value=''; scanBusy=false;
+}
+
+/* ============ Tab 3 · ROI ============ */
+// Wahrscheinlichkeits-Profile: P(Note) je Zustands-Einschätzung
+const GRADE_PROFILE={
+  gem:{10:.35,9:.45,8:.15,7:.05},
+  nm: {10:.12,9:.40,8:.33,7:.15},
+  ex: {10:.02,9:.18,8:.40,7:.40},
+  pl: {10:.00,9:.04,8:.20,7:.76}
+};
+// Wert-Multiplikator gegenüber Rohwert je PSA-Note (konservativ)
+const GRADE_MULT={10:4.0, 9:1.9, 8:1.25, 7:0.95};
+const TIER_FEE={value:25, reg:40, express:80};
+
+function calcROI(){
+  const raw=parseEuro(el('r-raw').value);
+  if(raw<=0){ toast('Bitte Roh-Marktwert eingeben'); return; }
+  const cond=el('r-cond').value, tier=el('r-tier').value;
+  const fee=TIER_FEE[tier]||TIER_FEE.reg, ship=parseEuro(el('r-ship').value);
+  const prof=GRADE_PROFILE[cond]||GRADE_PROFILE.nm;
+  let expected=0; const rows=[];
+  for(const g of [10,9,8,7]){
+    const p=prof[g]||0; const gv=raw*GRADE_MULT[g];
+    expected+=p*gv;
+    rows.push({g,p,gv});
+  }
+  const costTotal=raw+fee+ship;          // Karte + Grading + Versand
+  const net=expected-costTotal;
+  const roiPct=costTotal>0?(net/costTotal*100):0;
+  const verdict = net>raw*0.4 ? {t:'Lohnt sich klar',c:'pos'} :
+                  net>0       ? {t:'Grenzwertig – knapp positiv',c:'pos'} :
+                                {t:'Lohnt sich nicht',c:'neg'};
+  el('roi-out').innerHTML=`
+    <hr>
+    <div class="grid2">
+      <div class="stat"><b>${eur(expected)}</b><span>Erwarteter Wert (graded)</span></div>
+      <div class="stat"><b class="${net>=0?'pos':'neg'}">${net>=0?'+':''}${eur(net)}</b><span>Erw. Netto-Gewinn</span></div>
+    </div>
+    <div style="text-align:center;margin:10px 0">
+      <span class="pill" style="font-size:.82rem">${verdict.t} · ROI ${roiPct>=0?'+':''}${roiPct.toFixed(0)}%</span>
+    </div>
+    <div class="muted" style="font-size:.76rem">Kosten gesamt: ${eur(costTotal)} (Karte ${eur(raw)} + Grading ${eur(fee)} + Versand ${eur(ship)})</div>
+    <hr>
+    <div class="muted" style="font-size:.74rem;margin-bottom:4px">Wahrscheinlichkeits-Verteilung:</div>
+    ${rows.map(r=>`<div style="display:flex;justify-content:space-between;font-size:.8rem;padding:2px 0">
+      <span>PSA ${r.g} <span class="muted">(${(r.p*100).toFixed(0)}%)</span></span>
+      <b style="color:var(--gold)">${eur(r.gv)}</b></div>`).join('')}
+    <div class="muted" style="font-size:.7rem;margin-top:8px">Schätzung auf Basis konservativer Multiplikatoren – tatsächliche Marktpreise prüfen.</div>`;
+}
+
+/* ============ Tab 5 · Master-Polish ============ */
+const POLISH_CRIT=[
+  {k:'center', label:'Zentrierung'},
+  {k:'corners',label:'Ecken'},
+  {k:'edges',  label:'Kanten'},
+  {k:'surface',label:'Oberfläche'}
+];
+function buildPolish(){
+  if(el('polish-controls').dataset.built) return;
+  el('polish-controls').innerHTML=POLISH_CRIT.map(c=>`
+    <label>${c.label}: <span id="pl-${c.k}-v" style="color:var(--gold)">5</span> / 10</label>
+    <input type="range" min="1" max="10" value="5" id="pl-${c.k}"
+      oninput="el('pl-${c.k}-v').textContent=this.value" style="padding:0">
+  `).join('');
+  el('polish-controls').dataset.built='1';
+}
+function estimateGrade(){
+  const vals=POLISH_CRIT.map(c=>+el('pl-'+c.k).value);
+  const min=Math.min(...vals);
+  const avg=vals.reduce((a,b)=>a+b,0)/vals.length;
+  // PSA-Logik: schwächstes Kriterium deckelt, Schnitt feintunt
+  let grade=Math.round(Math.min(min+0.5, avg));
+  grade=Math.max(1,Math.min(10,grade));
+  const labels={10:'Gem Mint',9:'Mint',8:'NM-Mint',7:'Near Mint',6:'EX-MT',5:'Excellent'};
+  const label=labels[grade]||'Played';
+  const weakest=POLISH_CRIT[vals.indexOf(min)].label;
+  el('polish-out').innerHTML=`
+    <hr>
+    <div style="text-align:center">
+      <div class="big" style="color:var(--gold)">PSA ${grade}</div>
+      <div class="muted" style="font-size:.85rem">≈ ${label}</div>
+    </div>
+    <div class="muted" style="font-size:.8rem;margin-top:8px">
+      Schwächstes Kriterium: <b style="color:var(--ink)">${weakest}</b> (${min}/10) –
+      das deckelt die Note am stärksten. ${grade>=9?'Starker Grading-Kandidat.':grade>=7?'Solide, aber Wert genau prüfen.':'Für Grading eher nicht lohnend.'}
+    </div>`;
+}
+
+/* ============ Tab 6 · Arena ============ */
+let A=null;
+let selectedMonster=null;
+const FOES={
+  leicht:{name:'Späher-Glumanda',hp:80,atk:[8,16],def:.10},
+  normal:{name:'Wächter-Garados',hp:110,atk:[12,22],def:.18},
+  schwer:{name:'Tyrann-Despotar',hp:150,atk:[16,28],def:.28}
+};
+const BOSS={name:'✨ Glasswing, der Goldene',hp:200,atk:[20,30],def:.30};
+const DEFAULT_CHAMP={id:null,name:'Vault-Wächter',value:0,cond:'nm',game:'pkmn',photo:null};
+
+// Kampfwerte aus einer Karte ableiten: Wert → Kraft, Zustand → HP-Bonus
+function monsterStats(c){
+  const val=c.value||0;
+  const condHp={gem:30,nm:18,ex:8,pl:0}[c.cond];
+  const hp=Math.round(Math.max(80, Math.min(210, 90 + Math.min(70, Math.sqrt(val)*7) + (condHp==null?12:condHp))));
+  const pow=+(1 + Math.min(0.7, Math.sqrt(val)/22)).toFixed(2); // 1.00–1.70× Angriff
+  return {id:c.id, name:c.name, game:c.game||'pkmn', photo:Photos.read(c.id)||null, hp, pow};
+}
+
+function buildMonsterList(){
+  const box=el('monster-list'); if(!box) return;
+  if(!cards.length){
+    selectedMonster=null;
+    box.innerHTML='<div class="empty" style="grid-column:1/-1;padding:14px">Noch keine Karten in der Sammlung – du kämpfst mit dem Standard-Champion <b style="color:var(--gold)">Vault-Wächter</b>. Lege Karten an, um eigene Monster zu nutzen.</div>';
+    renderPick(); return;
+  }
+  if(selectedMonster && !cards.some(c=>c.id===selectedMonster.id)) selectedMonster=null;
+  box.innerHTML=cards.map(c=>{
+    const s=monsterStats(c);
+    const img=Photos.has(c.id)?`<img src="${Photos.read(c.id)}" alt="">`:`<div class="ph">${esc(c.name).slice(0,12)}</div>`;
+    const sel=selectedMonster&&selectedMonster.id===c.id?'sel':'';
+    return `<button class="mon ${sel}" onclick="selectMonster('${c.id}')">
+      ${img}<span>${esc(c.name)}</span><small>❤${s.hp} · ⚔${s.pow}×</small></button>`;
+  }).join('');
+  renderPick();
+}
+function selectMonster(id){
+  selectedMonster=cards.find(c=>c.id===id)||null;
+  buildMonsterList();
+}
+function renderPick(){
+  const pick=el('monster-pick'); if(!pick) return;
+  const c=selectedMonster||(cards.length?null:DEFAULT_CHAMP);
+  if(!selectedMonster && cards.length){
+    pick.style.display='block';
+    pick.innerHTML='Kein Monster gewählt – es kämpft automatisch deine <b>wertvollste</b> Karte.';
+    return;
+  }
+  if(!c){ pick.style.display='none'; return; }
+  const s=monsterStats(c);
+  pick.style.display='block';
+  pick.innerHTML=`Kämpfer: <b>${esc(s.name)}</b> · ❤ ${s.hp} HP · ⚔ ${s.pow}× Angriff`;
+}
+
+function startArena(){
+  const diff=el('a-diff').value;
+  const secret = stats.streak===7;          // Easter-Egg: genau bei 7er-Serie (danach normaler Gegner)
+  const foe = secret ? {...BOSS} : {...FOES[diff]};
+  // gewähltes Monster, sonst wertvollste Karte, sonst Standard-Champion
+  const base = selectedMonster
+    || [...cards].sort((a,b)=>(b.value||0)-(a.value||0))[0]
+    || DEFAULT_CHAMP;
+  const me = monsterStats(base);
+  A={ diff, foe, foeHP:foe.hp, foeMax:foe.hp, me, meHP:me.hp, meMax:me.hp, shield:false, special:true, over:false, secret };
+  el('arena-setup').style.display='none';
+  el('arena-stage').style.display='block';
+  el('foe-name').textContent=foe.name;
+  el('me-name').textContent=me.name;
+  el('arena-log').innerHTML='';
+  if(secret) logA(`<b>Ein goldenes Flügelrauschen…</b> ${foe.name} erscheint!`);
+  else logA(`<b>${me.name}</b> betritt die Arena gegen <b>${foe.name}</b>. Mach den ersten Zug.`);
+  drawHP();
+  init3D(A);
+}
+function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function logA(html){ const l=el('arena-log'); l.innerHTML+='<div>'+html+'</div>'; l.scrollTop=l.scrollHeight; }
+function drawHP(){
+  const fp=Math.max(0,A.foeHP/A.foeMax*100), mp=Math.max(0,A.meHP/A.meMax*100);
+  el('foe-hpbar').firstElementChild.style.width=fp+'%';
+  el('me-hpbar').firstElementChild.style.width=mp+'%';
+  el('foe-hpbar').classList.toggle('low',fp<30);
+  el('me-hpbar').classList.toggle('low',mp<30);
+  el('foe-hp').textContent=Math.max(0,Math.round(A.foeHP))+' HP';
+  el('me-hp').textContent=Math.max(0,Math.round(A.meHP))+' HP';
+  update3D();
+}
+function arenaMove(move){
+  if(!A||A.over||A.busy) return;
+  if(move==='flee'){ endArena(false,'Du hast aufgegeben.'); return; }
+  let dmg=0;
+  const pow=A.me.pow||1;
+  if(move==='attack'){ dmg=Math.round(rnd(14,24)*pow); logA(`<b>${A.me.name}</b> greift an – <b>${dmg}</b> Schaden.`); }
+  else if(move==='special'){
+    if(!A.special){ toast('Spezial schon verbraucht'); return; }
+    A.special=false; dmg=Math.round(rnd(26,40)*pow); logA(`⚡ Spezialangriff! <b>${dmg}</b> Schaden.`);
+  }
+  else if(move==='shield'){ A.shield=true; logA('Du gehst in Deckung – nächster Treffer halbiert.'); }
+  if(dmg){ A.foeHP-=dmg*(1-A.foe.def); play3DAttack('me'); }
+  drawHP();
+  if(A.foeHP<=0){ endArena(true,`${A.foe.name} ist besiegt!`); return; }
+  // Gegnerzug
+  A.busy=true;
+  setTimeout(()=>{
+    if(A.over) return;
+    let fd=rnd(A.foe.atk[0],A.foe.atk[1]);
+    if(A.shield){ fd=Math.floor(fd/2); A.shield=false; logA(`${A.foe.name} trifft – Schild halbiert auf <b>${fd}</b>.`); }
+    else logA(`${A.foe.name} trifft dich für <b>${fd}</b>.`);
+    A.meHP-=fd; play3DAttack('foe'); drawHP();
+    if(A.meHP<=0){ endArena(false, A.me.name+' wurde besiegt.'); return; }
+    A.busy=false;
+  },550);
+}
+function endArena(won, msg){
+  A.over=true;
+  if(won){
+    stats.wins++; stats.streak++;
+    logA(`<b style="color:var(--green)">SIEG!</b> ${msg}`);
+    if(A.secret){ toast('🏆 Geheim-Boss bezwungen – Legende!'); grantSticker('glasswing', SECRET_STICKERS.glasswing.label, SECRET_STICKERS.glasswing.sub); }
+    else toast('Sieg! Serie: '+stats.streak);
+    addXP(A.secret?40:12);
+  } else {
+    stats.loss++; stats.streak=0;
+    logA(`<b style="color:var(--red)">Niederlage.</b> ${msg}`);
+    toast('Verloren – Serie zurückgesetzt');
+    addXP(3);
+  }
+  save(); renderArenaStats();
+  setTimeout(()=>{
+    teardown3D();
+    el('arena-setup').style.display='block';
+    el('arena-stage').style.display='none';
+  },1600);
+}
+function renderArenaStats(){
+  el('a-wins').textContent=stats.wins;
+  el('a-loss').textContent=stats.loss;
+  el('streak-pill').textContent='Serie: '+stats.streak+(stats.streak>=7?' 🔥':'');
+  const lv=levelFor(stats.xp), nt=nextThreshold(stats.xp), prev=LEVELS[lv-1]||0;
+  if(el('level-pill')) el('level-pill').textContent='Lvl '+lv;
+  if(el('xp-fill')){ const pct = nt>prev ? Math.min(100,(stats.xp-prev)/(nt-prev)*100) : 100; el('xp-fill').style.width=pct+'%'; }
+  if(el('xp-text')) el('xp-text').textContent = (lv>=LEVELS.length) ? ('Max-Level · '+stats.xp+' XP') : (stats.xp+' / '+nt+' XP bis Level '+(lv+1));
+  renderStickers();
+}
+
+/* ============ 3D-Arena (three.js, lazy geladen, mit 2D-Fallback) ============ */
+let T3 = { on:false, failed:false, THREE:null, renderer:null, scene:null, camera:null, me:null, foe:null, raf:null, anims:[], t:0 };
+async function init3D(state){
+  const host=el('stage3d'), badge=el('badge3d'); if(!host) return;
+  if(T3.failed){ if(badge) badge.textContent='2D-Modus'; return; }
+  teardown3D();
+  try{
+    if(!T3.THREE) T3.THREE = await import(LIB.three);
+    const THREE=T3.THREE;
+    const W=host.clientWidth||320, H=host.clientHeight||210;
+    const renderer=new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+    renderer.setSize(W,H);
+    host.insertBefore(renderer.domElement, host.firstChild);
+    const scene=new THREE.Scene(); scene.fog=new THREE.FogExp2(0x0d0f14,0.06);
+    const camera=new THREE.PerspectiveCamera(50, W/H, 0.1, 100);
+    camera.position.set(0,2.4,6.2); camera.lookAt(0,0.5,0);
+    scene.add(new THREE.AmbientLight(0xffffff,0.5));
+    const gl=new THREE.PointLight(0xE6B450,1.1,30); gl.position.set(-3,4,3); scene.add(gl);
+    const rl=new THREE.PointLight(0xE0556B,0.9,30); rl.position.set(3,3,-2); scene.add(rl);
+    const floor=new THREE.Mesh(new THREE.CylinderGeometry(3.4,3.4,0.3,40),
+      new THREE.MeshStandardMaterial({color:0x1c2230,metalness:.3,roughness:.7})); floor.position.y=-0.9; scene.add(floor);
+    const ring=new THREE.Mesh(new THREE.TorusGeometry(3.4,0.06,12,48),
+      new THREE.MeshStandardMaterial({color:0xE6B450,emissive:0x4a3a12,metalness:.6,roughness:.4}));
+    ring.rotation.x=Math.PI/2; ring.position.y=-0.74; scene.add(ring);
+    const me=makeFighter(THREE,0xE6B450,true);  me.position.set(-1.7,0,0.6);
+    const foe=makeFighter(THREE,state.secret?0xffd700:0xE0556B,false); foe.position.set(1.7,0,-0.4);
+    scene.add(me); scene.add(foe);
+    T3.on=true; T3.renderer=renderer; T3.scene=scene; T3.camera=camera; T3.me=me; T3.foe=foe; T3.anims=[]; T3.t=0;
+    if(badge) badge.textContent = state.secret ? '✨ Boss-Arena' : '3D-Arena';
+    loop3D(); update3D();
+  }catch(e){
+    T3.failed=true; T3.on=false;
+    if(badge) badge.textContent='2D-Modus (3D nicht verfügbar)';
+  }
+}
+function makeFighter(THREE,color,isMe){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(
+    isMe?new THREE.OctahedronGeometry(0.85,0):new THREE.IcosahedronGeometry(0.85,0),
+    new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:0.25,metalness:.5,roughness:.35,flatShading:true}));
+  body.position.y=0.4; g.add(body);
+  const base=new THREE.Mesh(new THREE.TorusGeometry(0.6,0.08,10,24),
+    new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.3}));
+  base.rotation.x=Math.PI/2; base.position.y=-0.45; g.add(base);
+  g.userData.body=body; g.userData.baseColor=color;
+  return g;
+}
+function loop3D(){
+  if(!T3.on) return;
+  T3.raf=requestAnimationFrame(loop3D);
+  const dt=0.016; T3.t+=dt;
+  if(T3.me){ T3.me.userData.body.rotation.y+=0.01; T3.me.position.y=Math.sin(T3.t*2)*0.06; }
+  if(T3.foe){ T3.foe.userData.body.rotation.y-=0.008; T3.foe.position.y=Math.sin(T3.t*2+1)*0.06; }
+  T3.anims=T3.anims.filter(a=>{ a.t+=dt/a.dur; const k=Math.min(1,a.t);
+    const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; a.fn(e,k>=1); return k<1; });
+  try{ T3.renderer.render(T3.scene,T3.camera); }catch(e){ T3.on=false; }
+}
+function update3D(){
+  if(!T3.on||!A) return;
+  const setHp=(grp,hp,max,boss)=>{ if(!grp) return;
+    const r=Math.max(0,hp/max), low=r<0.3;
+    grp.scale.setScalar((0.7+0.3*r)*(boss?1.25:1));
+    grp.userData.body.material.color.set(low?0x8a2030:grp.userData.baseColor);
+    grp.userData.body.material.emissive.set(low?0x401018:grp.userData.baseColor);
+  };
+  setHp(T3.me,A.meHP,A.meMax,false);
+  setHp(T3.foe,A.foeHP,A.foeMax,A.secret);
+}
+function play3DAttack(side){
+  if(!T3.on) return;
+  const att=side==='me'?T3.me:T3.foe, tgt=side==='me'?T3.foe:T3.me;
+  if(!att||!tgt) return;
+  const sx=att.position.x, tx=tgt.position.x*0.45;
+  T3.anims.push({t:0,dur:0.32,fn:(e,done)=>{
+    const l=Math.sin(e*Math.PI); att.position.x=sx+(tx-sx)*l;
+    if(e>0.4&&tgt.userData.body) tgt.userData.body.material.emissiveIntensity=0.25+0.8*(1-e);
+    if(done){ att.position.x=sx; tgt.userData.body.material.emissiveIntensity=0.25; }
+  }});
+}
+function teardown3D(){
+  if(T3.raf) cancelAnimationFrame(T3.raf);
+  T3.on=false;
+  try{ if(T3.renderer){ T3.renderer.dispose(); const el2=T3.renderer.domElement; if(el2&&el2.parentNode) el2.parentNode.removeChild(el2); } }catch(e){}
+  T3.renderer=null; T3.scene=null; T3.me=null; T3.foe=null; T3.anims=[];
+}
+
+/* ============ Easter Eggs ============ */
+let tapCount=0, tapTimer=null;
+el('brand').addEventListener('click',()=>{
+  tapCount++; clearTimeout(tapTimer);
+  tapTimer=setTimeout(()=>tapCount=0,1400);
+  if(tapCount===5){ toast('✨ Glasswing erwacht bei einer 7er-Siegesserie in der Arena…'); }
+  if(tapCount>=7){ tapCount=0; openAdmin(); }
+});
+
+// Konami-Code: ↑↑↓↓←→←→ B A  → Geheim-Sticker
+const KONAMI=['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+let konamiPos=0;
+window.addEventListener('keydown',e=>{
+  const k=e.key.length===1?e.key.toLowerCase():e.key;
+  konamiPos = (k===KONAMI[konamiPos]) ? konamiPos+1 : (k===KONAMI[0]?1:0);
+  if(konamiPos===KONAMI.length){ konamiPos=0; grantSticker('konami', SECRET_STICKERS.konami.label, SECRET_STICKERS.konami.sub); }
+});
+
+// "FGWL" oder "47" in der Kartensuche → Geheim-Sticker
+function checkEgg(q){
+  const s=(q||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  if(s.includes('fgwl')||s==='47'){ grantSticker('fgwlcode', SECRET_STICKERS.fgwlcode.label, SECRET_STICKERS.fgwlcode.sub); }
+}
+
+/* ============ PWA-Manifest zur Laufzeit (Fallback, wenn keine statische manifest.webmanifest daneben liegt) ============ */
+(function injectManifest(){
+  if(document.querySelector('link[rel="manifest"]')) return; // statisches Manifest hat Vorrang
+  try{
+    const cv=document.createElement('canvas'); cv.width=cv.height=192;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#15171C'; ctx.fillRect(0,0,192,192);
+    ctx.strokeStyle='#E6B450'; ctx.lineWidth=10;
+    ctx.beginPath(); ctx.moveTo(96,28);
+    ctx.lineTo(150,52); ctx.lineTo(150,104);
+    ctx.quadraticCurveTo(150,150,96,168);
+    ctx.quadraticCurveTo(42,150,42,104);
+    ctx.lineTo(42,52); ctx.closePath(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(74,96); ctx.lineTo(90,112); ctx.lineTo(122,80);
+    ctx.lineWidth=12; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
+    const icon=cv.toDataURL('image/png');
+    const manifest={ name:'Grade-Check Vault', short_name:'Grade-Check',
+      description:'Pokémon-Karten scannen, bewerten, handeln und Grading-ROI berechnen.',
+      lang:'de', start_url:'.', display:'standalone', orientation:'portrait',
+      background_color:'#15171C', theme_color:'#15171C',
+      icons:[{src:icon,sizes:'192x192',type:'image/png',purpose:'any maskable'}] };
+    const blob=new Blob([JSON.stringify(manifest)],{type:'application/manifest+json'});
+    const link=document.createElement('link');
+    link.rel='manifest'; link.href=URL.createObjectURL(blob);
+    document.head.appendChild(link);
+    const apple=document.createElement('link');
+    apple.rel='apple-touch-icon'; apple.href=icon; document.head.appendChild(apple);
+  }catch(e){/* PWA optional */}
+})();
+
+/* ============ Hinweis-Banner: „Zur Startseite" + Backup-Erinnerung ============ */
+function isStandalone(){
+  return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+}
+let _deferredPrompt=null;
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); _deferredPrompt=e; });
+
+function showNudge(html, actionLabel, actionFn, onDismiss){
+  const n=el('nudge'); if(!n) return;
+  el('nudge-txt').innerHTML=html;
+  const act=el('nudge-act');
+  if(actionLabel){ act.textContent=actionLabel; act.style.display=''; act.onclick=()=>{ hideNudge(); if(actionFn) actionFn(); }; }
+  else { act.style.display='none'; act.onclick=null; }
+  el('nudge-x').onclick=()=>{ hideNudge(); if(onDismiss) onDismiss(); };
+  n.classList.add('show');
+}
+function hideNudge(){ const n=el('nudge'); if(n) n.classList.remove('show'); }
+
+// Einmaliger „Zur Startseite hinzufügen"-Hinweis (schützt v. a. auf iOS vor Storage-Löschung)
+function maybeSuggestInstall(){
+  if(isStandalone() || store.get('gcv_a2hs_done')==='1' || !cards.length) return;
+  setTimeout(()=>{
+    if(el('nudge').classList.contains('show')) return;   // Backup-Nudge hat Vorrang
+    const label = _deferredPrompt ? 'Installieren' : 'Wie?';
+    showNudge('📲 <b>Zur Startseite hinzufügen</b> – dann bleibt deine Sammlung sicher gespeichert (Browser wie iOS löschen lokale Daten sonst nach ~7 Tagen).',
+      label,
+      ()=>{ store.set('gcv_a2hs_done','1');
+        if(_deferredPrompt){ _deferredPrompt.prompt(); _deferredPrompt=null; }
+        else toast('Teilen-Menü öffnen → „Zum Home-Bildschirm"'); },
+      ()=>store.set('gcv_a2hs_done','1'));
+  }, 4000);
+}
+
+// Backup-Erinnerung alle 14 Tage (zählt auch Cloud/Server-Sync als Backup)
+const BACKUP_INTERVAL = 14*24*60*60*1000;
+function markBackup(){ store.set('gcv_last_backup', String(Date.now())); }
+function maybeSuggestBackup(){
+  if(!cards.length) return;
+  const last=parseInt(store.get('gcv_last_backup')||'0',10);
+  if(!last){ markBackup(); return; }                       // erste Nutzung: Timer starten, nicht nerven
+  if(Date.now()-last < BACKUP_INTERVAL) return;
+  setTimeout(()=>{
+    showNudge('💾 Länger kein Backup gemacht. Sammlung jetzt als Datei sichern?',
+      'Sichern', ()=>{ exportJSON(); markBackup(); },
+      ()=>markBackup());
+  }, 2000);
+}
+
+/* ============ Start ============ */
+syncCats();
+renderCollection(); updateStats(); renderArenaStats(); buildPolish();
+renderProfile(); buildMonsterList(); renderStickers();
+renderFbUI(); if(fbConfigured()) ensureFirebase().catch(()=>{}); // Cloud-UI + evtl. bestehende Sitzung
+maybeSuggestBackup(); maybeSuggestInstall();
+if(el('server-url')) el('server-url').value=serverUrl;
+serverPing(); // erkennt lokalen Server (falls gestartet)
+// Replit-Session beim Start prüfen (synchronisiert server-seitige Anmeldung)
+checkReplitSession().then(()=>{
+  // Beim allerersten Start einmalig den Login anbieten (danach nie wieder nerven)
+  if(!currentUser && !store.get('gcv_seenAuth')){ store.set('gcv_seenAuth','1'); openAuth(); }
+});
+
+/* ============ Service Worker (echtes Offline + installierbar) ============
+   Registriert sich nur über http(s) und wenn eine sw.js daneben liegt.
+   Auf file:// oder ohne sw.js passiert einfach nichts – die App läuft normal. */
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  window.addEventListener('load', ()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+<script>
+/* ====== Kombiniert: Nebula-Spiel eingebettet + server.js-Download ====== */
+const NEBULA_B64="PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9ImVuIj4KPGhlYWQ+CiAgPG1ldGEgY2hhcnNldD0iVVRGLTgiIC8+CiAgPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiIC8+CiAgPHRpdGxlPk5lYnVsYSBWYW5ndWFyZCAzRDwvdGl0bGU+CiAgPHN0eWxlPgogICAgOnJvb3R7CiAgICAgIC0tYmc6IzA1MDcwZjsKICAgICAgLS1odWQ6I2I5ZWNmZjsKICAgICAgLS1odWQtc3Ryb25nOiNlYWY4ZmY7CiAgICAgIC0tYWNjZW50OiM4Yzk5ZmY7CiAgICAgIC0tZGFuZ2VyOiNmZjZiOGQ7CiAgICAgIC0tb2s6IzZkZmZhMTsKICAgICAgLS13YXJuOiNmZmJmNzg7CiAgICAgIC0tcGFuZWw6cmdiYSg2LDEwLDI0LC42Mik7CiAgICAgIC0tcGFuZWwtc3Ryb25nOnJnYmEoOCwxMiwyOCwuODYpOwogICAgICAtLWxpbmU6cmdiYSgxNDMsMjMyLDI1NSwuMjgpOwogICAgICAtLWxpbmUtc3Ryb25nOnJnYmEoMTY2LDIxNSwyNTUsLjQyKTsKICAgICAgLS1zaGFkb3c6MCAxMHB4IDMwcHggcmdiYSgyLDcsMTgsLjQ1KTsKICAgICAgLS1nbG93OjAgMCAxOHB4IHJnYmEoMTA5LDEyMywyNTUsLjI1KTsKICAgIH0KICAgIGh0bWwsYm9keXsKICAgICAgbWFyZ2luOjA7CiAgICAgIHdpZHRoOjEwMCU7CiAgICAgIGhlaWdodDoxMDAlOwogICAgICBvdmVyZmxvdzpoaWRkZW47CiAgICAgIGJhY2tncm91bmQ6cmFkaWFsLWdyYWRpZW50KGNpcmNsZSBhdCA1MCUgMzUlLCAjMTAxYTNhIDAlLCAjMDcwYjE4IDQ1JSwgIzAzMDQwYSAxMDAlKTsKICAgICAgY29sb3I6d2hpdGU7CiAgICAgIGZvbnQtZmFtaWx5OiJTZWdvZSBVSSIsIFJvYm90bywgQXJpYWwsIHNhbnMtc2VyaWY7CiAgICB9CgogICAgI2dhbWUsI2ZhbGxiYWNrewogICAgICBwb3NpdGlvbjpmaXhlZDsKICAgICAgaW5zZXQ6MDsKICAgICAgd2lkdGg6MTAwJTsKICAgICAgaGVpZ2h0OjEwMCU7CiAgICAgIGRpc3BsYXk6YmxvY2s7CiAgICB9CgogICAgI2h1ZHsKICAgICAgcG9zaXRpb246Zml4ZWQ7CiAgICAgIGluc2V0OjA7CiAgICAgIHBvaW50ZXItZXZlbnRzOm5vbmU7CiAgICAgIGRpc3BsYXk6ZmxleDsKICAgICAgZmxleC1kaXJlY3Rpb246Y29sdW1uOwogICAgICBqdXN0aWZ5LWNvbnRlbnQ6c3BhY2UtYmV0d2VlbjsKICAgICAgcGFkZGluZzoxNHB4OwogICAgICBib3gtc2l6aW5nOmJvcmRlci1ib3g7CiAgICAgIHotaW5kZXg6MjA7CiAgICB9CiAgICAuaHVkLXRvcHsKICAgICAgZGlzcGxheTpncmlkOwogICAgICBncmlkLXRlbXBsYXRlLWNvbHVtbnM6Mi4xZnIgMWZyOwogICAgICBnYXA6MTJweDsKICAgICAgYWxpZ24taXRlbXM6c3RhcnQ7CiAgICB9CiAgICAuaHVkLW1haW57CiAgICAgIGRpc3BsYXk6Z3JpZDsKICAgICAgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOnJlcGVhdCg0LG1pbm1heCgxMjBweCwxZnIpKTsKICAgICAgZ2FwOjEwcHg7CiAgICAgIG1pbi13aWR0aDptaW4oNzgwcHgsMTAwJSk7CiAgICB9CiAgICAuaHVkLXNpZGV7CiAgICAgIGRpc3BsYXk6ZmxleDsKICAgICAganVzdGlmeS1jb250ZW50OmZsZXgtZW5kOwogICAgfQogICAgLmh1ZC1ib3R0b217CiAgICAgIGRpc3BsYXk6ZmxleDsKICAgICAganVzdGlmeS1jb250ZW50OnNwYWNlLWJldHdlZW47CiAgICAgIGFsaWduLWl0ZW1zOmZsZXgtZW5kOwogICAgICBnYXA6MTJweDsKICAgICAgZmxleC13cmFwOndyYXA7CiAgICB9CgogICAgLnBhbmVsewogICAgICBiYWNrZ3JvdW5kOmxpbmVhci1ncmFkaWVudCgxODBkZWcsIHJnYmEoMTYsMjQsNTQsLjUpLCB2YXIoLS1wYW5lbCkpOwogICAgICBib3JkZXI6MXB4IHNvbGlkIHZhcigtLWxpbmUpOwogICAgICBib3gtc2hhZG93OnZhcigtLXNoYWRvdyksIGluc2V0IDAgMCAyMHB4IHJnYmEoODAsMTAwLDI1NSwuMSk7CiAgICAgIGJvcmRlci1yYWRpdXM6MTBweDsKICAgICAgcGFkZGluZzoxMHB4IDEycHg7CiAgICAgIGJhY2tkcm9wLWZpbHRlcjogYmx1cigzcHgpOwogICAgfQogICAgLnBhbmVsLmNvbXBhY3R7IHBhZGRpbmc6OHB4IDEwcHg7IH0KICAgIC5wYW5lbC5wcmltYXJ5ewogICAgICBib3JkZXItY29sb3I6dmFyKC0tbGluZS1zdHJvbmcpOwogICAgICBib3gtc2hhZG93OnZhcigtLXNoYWRvdyksIHZhcigtLWdsb3cpLCBpbnNldCAwIDAgMjRweCByZ2JhKDE0MywyMzIsMjU1LC4wOSk7CiAgICB9CgogICAgLmxhYmVsewogICAgICBjb2xvcjojYTdiZGZmOwogICAgICBmb250LXNpemU6LjY4cmVtOwogICAgICBsZXR0ZXItc3BhY2luZzouMTRlbTsKICAgICAgdGV4dC10cmFuc2Zvcm06dXBwZXJjYXNlOwogICAgICBtYXJnaW4tYm90dG9tOjRweDsKICAgICAgb3BhY2l0eTouOTU7CiAgICB9CiAgICAudmFsdWV7CiAgICAgIGZvbnQtc2l6ZToxLjA4cmVtOwogICAgICBmb250LXdlaWdodDo3MDA7CiAgICAgIGNvbG9yOnZhcigtLWh1ZCk7CiAgICAgIGxpbmUtaGVpZ2h0OjEuMTsKICAgICAgdGV4dC1zaGFkb3c6MCAwIDEwcHggcmdiYSgxNDMsMjMyLDI1NSwuMzUpOwogICAgICBmb250LXZhcmlhbnQtbnVtZXJpYzogdGFidWxhci1udW1zOwogICAgfQogICAgLnZhbHVlLmJpZ3sKICAgICAgZm9udC1zaXplOjEuMjRyZW07CiAgICAgIGNvbG9yOnZhcigtLWh1ZC1zdHJvbmcpOwogICAgICBsZXR0ZXItc3BhY2luZzouMDJlbTsKICAgIH0KCiAgICAuc2hpZWxkLXdyYXB7IG1hcmdpbi10b3A6NnB4OyB9CiAgICAuYmFyewogICAgICB3aWR0aDoxMDAlOwogICAgICBtaW4td2lkdGg6MTcwcHg7CiAgICAgIGhlaWdodDoxMHB4OwogICAgICBib3JkZXItcmFkaXVzOjk5cHg7CiAgICAgIGJhY2tncm91bmQ6cmdiYSgyNTUsMjU1LDI1NSwuMDgpOwogICAgICBvdmVyZmxvdzpoaWRkZW47CiAgICAgIGJvcmRlcjoxcHggc29saWQgcmdiYSgyNTUsMjU1LDI1NSwuMTQpOwogICAgfQogICAgLmZpbGx7CiAgICAgIGhlaWdodDoxMDAlOwogICAgICB3aWR0aDoxMDAlOwogICAgICBiYWNrZ3JvdW5kOmxpbmVhci1ncmFkaWVudCg5MGRlZywjNTNmZjllLCM0ZWI4ZmYpOwogICAgICB0cmFuc2l0aW9uOndpZHRoIC4wOHMgbGluZWFyLCBiYWNrZ3JvdW5kLWNvbG9yIC4ycyBsaW5lYXI7CiAgICAgIGJveC1zaGFkb3c6MCAwIDEwcHggcmdiYSg4MywyNTUsMTU4LC41NSk7CiAgICB9CgogICAgLmNvbnRyb2wtaGludHsKICAgICAgbWF4LXdpZHRoOjU2MHB4OwogICAgICBjb2xvcjojZDVlOWZmOwogICAgICBmb250LXNpemU6Ljg2cmVtOwogICAgICBmb250LXdlaWdodDo2MDA7CiAgICAgIGxpbmUtaGVpZ2h0OjEuMzU7CiAgICB9CiAgICAua2JkewogICAgICBkaXNwbGF5OmlubGluZS1ibG9jazsKICAgICAgcGFkZGluZzoxcHggNnB4OwogICAgICBib3JkZXItcmFkaXVzOjZweDsKICAgICAgYm9yZGVyOjFweCBzb2xpZCByZ2JhKDE5MCwyMjAsMjU1LC4zNSk7CiAgICAgIGJhY2tncm91bmQ6cmdiYSgxOTAsMjIwLDI1NSwuMDkpOwogICAgICBjb2xvcjojZTdmNWZmOwogICAgICBmb250LXNpemU6LjhyZW07CiAgICAgIGZvbnQtd2VpZ2h0OjcwMDsKICAgICAgbGV0dGVyLXNwYWNpbmc6LjAyZW07CiAgICAgIHZlcnRpY2FsLWFsaWduOjFweDsKICAgIH0KCiAgICAjcmV0aWNsZXsKICAgICAgcG9zaXRpb246Zml4ZWQ7CiAgICAgIGxlZnQ6NTAlOwogICAgICB0b3A6NTAlOwogICAgICB3aWR0aDoyMHB4OwogICAgICBoZWlnaHQ6MjBweDsKICAgICAgdHJhbnNmb3JtOnRyYW5zbGF0ZSgtNTAlLC01MCUpOwogICAgICBwb2ludGVyLWV2ZW50czpub25lOwogICAgICBvcGFjaXR5Oi44MjsKICAgICAgei1pbmRleDoxODsKICAgICAgZmlsdGVyOmRyb3Atc2hhZG93KDAgMCA4cHggcmdiYSgxMjAsMjAwLDI1NSwuNTUpKTsKICAgIH0KICAgICNyZXRpY2xlOmJlZm9yZSwjcmV0aWNsZTphZnRlcnsKICAgICAgY29udGVudDoiIjsKICAgICAgcG9zaXRpb246YWJzb2x1dGU7CiAgICAgIGJhY2tncm91bmQ6cmdiYSgxOTYsMjM2LDI1NSwuOTIpOwogICAgfQogICAgI3JldGljbGU6YmVmb3Jle2xlZnQ6OXB4O3RvcDowO3dpZHRoOjJweDtoZWlnaHQ6MjBweDt9CiAgICAjcmV0aWNsZTphZnRlcntsZWZ0OjA7dG9wOjlweDt3aWR0aDoyMHB4O2hlaWdodDoycHg7fQoKICAgIC5vdmVybGF5ewogICAgICBwb3NpdGlvbjpmaXhlZDsKICAgICAgaW5zZXQ6MDsKICAgICAgZGlzcGxheTpmbGV4OwogICAgICBhbGlnbi1pdGVtczpjZW50ZXI7CiAgICAgIGp1c3RpZnktY29udGVudDpjZW50ZXI7CiAgICAgIGJhY2tncm91bmQ6CiAgICAgICAgcmFkaWFsLWdyYWRpZW50KGNpcmNsZSBhdCA1MCUgMjglLCByZ2JhKDY3LDk2LDE4OCwuMjQpLCByZ2JhKDUsNywxNCwuOTIpKSwKICAgICAgICByZ2JhKDAsMCwwLC4zNSk7CiAgICAgIHotaW5kZXg6MzA7CiAgICAgIHBhZGRpbmc6MTZweDsKICAgICAgYm94LXNpemluZzpib3JkZXItYm94OwogICAgfQogICAgLmNhcmR7CiAgICAgIHdpZHRoOm1pbig3NjBweCw5NXZ3KTsKICAgICAgYm9yZGVyLXJhZGl1czoxNHB4OwogICAgICBiYWNrZ3JvdW5kOnZhcigtLXBhbmVsLXN0cm9uZyk7CiAgICAgIGJvcmRlcjoxcHggc29saWQgdmFyKC0tbGluZS1zdHJvbmcpOwogICAgICBib3gtc2hhZG93OjAgMCA0MnB4IHJnYmEoODgsMTE4LDI1NSwuMjgpLCAwIDE4cHggNDVweCByZ2JhKDIsOCwyMCwuNTUpOwogICAgICBwYWRkaW5nOjIycHggMjJweCAxOHB4OwogICAgICBjb2xvcjojZGZmM2ZmOwogICAgfQogICAgLnRpdGxlewogICAgICBtYXJnaW46MCAwIDhweDsKICAgICAgZm9udC1zaXplOmNsYW1wKDEuN3JlbSw0dncsMi4zNXJlbSk7CiAgICAgIGNvbG9yOiNlMGYwZmY7CiAgICAgIGxldHRlci1zcGFjaW5nOi4wNWVtOwogICAgfQogICAgLnN1YnRpdGxlewogICAgICBtYXJnaW46MCAwIDE0cHg7CiAgICAgIGNvbG9yOiNhNmNjZmY7CiAgICAgIGxpbmUtaGVpZ2h0OjEuMzU7CiAgICB9CiAgICAucXVpY2tsaW5lewogICAgICBtYXJnaW46MCAwIDE0cHg7CiAgICAgIGZvbnQtc2l6ZTouOTJyZW07CiAgICAgIGNvbG9yOiNkOWVjZmY7CiAgICAgIGJhY2tncm91bmQ6cmdiYSgxNDMsMjMyLDI1NSwuMDcpOwogICAgICBib3JkZXI6MXB4IHNvbGlkIHJnYmEoMTQzLDIzMiwyNTUsLjE4KTsKICAgICAgYm9yZGVyLXJhZGl1czo5cHg7CiAgICAgIHBhZGRpbmc6OHB4IDEwcHg7CiAgICB9CgogICAgLmdyaWR7CiAgICAgIGRpc3BsYXk6Z3JpZDsKICAgICAgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOnJlcGVhdChhdXRvLWZpdCxtaW5tYXgoMjIwcHgsMWZyKSk7CiAgICAgIGdhcDoxMXB4OwogICAgICBtYXJnaW46MTJweCAwIDE2cHg7CiAgICB9CiAgICAuYm94ewogICAgICBib3JkZXI6MXB4IHNvbGlkIHJnYmEoMTUxLDE3NiwyNTUsLjIzKTsKICAgICAgYm9yZGVyLXJhZGl1czoxMHB4OwogICAgICBwYWRkaW5nOjEwcHg7CiAgICAgIGJhY2tncm91bmQ6cmdiYSgyMCwyNiw1MiwuMzgpOwogICAgfQogICAgLmJveCBoM3sKICAgICAgbWFyZ2luOjAgMCA4cHg7CiAgICAgIGNvbG9yOiNjMGQ4ZmY7CiAgICAgIGZvbnQtc2l6ZTouOTdyZW07CiAgICB9CiAgICAuYm94IHB7CiAgICAgIG1hcmdpbjo0cHggMDsKICAgICAgY29sb3I6I2Q5ZTlmZjsKICAgICAgbGluZS1oZWlnaHQ6MS4zNDsKICAgICAgZm9udC1zaXplOi45MnJlbTsKICAgIH0KCiAgICAuYnRuewogICAgICBwb2ludGVyLWV2ZW50czphdXRvOwogICAgICBib3JkZXI6bm9uZTsKICAgICAgYm9yZGVyLXJhZGl1czoxMHB4OwogICAgICBwYWRkaW5nOjEycHggMThweDsKICAgICAgZm9udC1zaXplOjFyZW07CiAgICAgIGZvbnQtd2VpZ2h0OjcwMDsKICAgICAgY29sb3I6IzAzMTExZDsKICAgICAgYmFja2dyb3VuZDpsaW5lYXItZ3JhZGllbnQoOTBkZWcsIzc5ZWNmZiwjODlhMGZmKTsKICAgICAgYm94LXNoYWRvdzowIDAgMjJweCByZ2JhKDEyMSwyMzYsMjU1LC40NSk7CiAgICAgIGN1cnNvcjpwb2ludGVyOwogICAgfQogICAgLmJ0bjphY3RpdmV7IHRyYW5zZm9ybTp0cmFuc2xhdGVZKDFweCk7IH0KCiAgICAjZmFsbGJhY2t7CiAgICAgIGJhY2tncm91bmQ6IzA3MGMxYTsKICAgICAgZGlzcGxheTpub25lOwogICAgICB6LWluZGV4OjU7CiAgICB9CiAgICAjZmFsbGJhY2tJbmZvewogICAgICBwb3NpdGlvbjpmaXhlZDsKICAgICAgcmlnaHQ6MTJweDsKICAgICAgYm90dG9tOjEycHg7CiAgICAgIHotaW5kZXg6MjI7CiAgICAgIGNvbG9yOiNjNmU5ZmY7CiAgICAgIGJhY2tncm91bmQ6cmdiYSg4LDEyLDI4LC44KTsKICAgICAgYm9yZGVyOjFweCBzb2xpZCByZ2JhKDE0OCwxOTcsMjU1LC4zNSk7CiAgICAgIHBhZGRpbmc6OHB4IDEwcHg7CiAgICAgIGJvcmRlci1yYWRpdXM6OHB4OwogICAgICBmb250LXNpemU6LjgycmVtOwogICAgICBkaXNwbGF5Om5vbmU7CiAgICB9CgogICAgQG1lZGlhIChtYXgtd2lkdGg6ODgwcHgpewogICAgICAuaHVkLXRvcHsgZ3JpZC10ZW1wbGF0ZS1jb2x1bW5zOjFmcjsgfQogICAgICAuaHVkLW1haW57IGdyaWQtdGVtcGxhdGUtY29sdW1uczpyZXBlYXQoMixtaW5tYXgoMTIwcHgsMWZyKSk7IH0KICAgICAgLmh1ZC1zaWRleyBqdXN0aWZ5LWNvbnRlbnQ6ZmxleC1zdGFydDsgfQogICAgICAuY29udHJvbC1oaW50eyBtYXgtd2lkdGg6dW5zZXQ7IH0KICAgIH0KICA8L3N0eWxlPgo8L2hlYWQ+Cjxib2R5PgogIDxjYW52YXMgaWQ9ImdhbWUiPjwvY2FudmFzPgogIDxjYW52YXMgaWQ9ImZhbGxiYWNrIj48L2NhbnZhcz4KCiAgPGRpdiBpZD0iaHVkIj4KICAgIDxkaXYgY2xhc3M9Imh1ZC10b3AiPgogICAgICA8ZGl2IGNsYXNzPSJodWQtbWFpbiI+CiAgICAgICAgPGRpdiBjbGFzcz0icGFuZWwgY29tcGFjdCBwcmltYXJ5Ij4KICAgICAgICAgIDxkaXYgY2xhc3M9ImxhYmVsIj5TY29yZTwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0idmFsdWUgYmlnIiBpZD0ic2NvcmUiPjA8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJwYW5lbCBjb21wYWN0Ij4KICAgICAgICAgIDxkaXYgY2xhc3M9ImxhYmVsIj5XYXZlPC9kaXY+CiAgICAgICAgICA8ZGl2IGNsYXNzPSJ2YWx1ZSIgaWQ9IndhdmUiPjE8L2Rpdj4KICAgICAgICA8L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJwYW5lbCBjb21wYWN0Ij4KICAgICAgICAgIDxkaXYgY2xhc3M9ImxhYmVsIj5MaXZlczwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0idmFsdWUiIGlkPSJsaXZlcyI+MzwvZGl2PgogICAgICAgIDwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9InBhbmVsIGNvbXBhY3QiPgogICAgICAgICAgPGRpdiBjbGFzcz0ibGFiZWwiPlNoaWVsZDwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0idmFsdWUiIGlkPSJzaGllbGRUZXh0Ij5SZWFkeTwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0ic2hpZWxkLXdyYXAiPgogICAgICAgICAgICA8ZGl2IGNsYXNzPSJiYXIiPjxkaXYgY2xhc3M9ImZpbGwiIGlkPSJzaGllbGRGaWxsIj48L2Rpdj48L2Rpdj4KICAgICAgICAgIDwvZGl2PgogICAgICAgIDwvZGl2PgogICAgICA8L2Rpdj4KICAgICAgPGRpdiBjbGFzcz0iaHVkLXNpZGUiPgogICAgICAgIDxkaXYgY2xhc3M9InBhbmVsIGNvbXBhY3QiPgogICAgICAgICAgPGRpdiBjbGFzcz0ibGFiZWwiPk9iamVjdGl2ZTwvZGl2PgogICAgICAgICAgPGRpdiBjbGFzcz0idmFsdWUiIHN0eWxlPSJmb250LXNpemU6LjlyZW07Y29sb3I6I2Q3ZWJmZjtmb250LXdlaWdodDo2MDAiPlN1cnZpdmUgYW5kIGNsZWFyIGVuZW15IHdhdmVzLjwvZGl2PgogICAgICAgIDwvZGl2PgogICAgICA8L2Rpdj4KICAgIDwvZGl2PgoKICAgIDxkaXYgY2xhc3M9Imh1ZC1ib3R0b20iPgogICAgICA8ZGl2IGNsYXNzPSJwYW5lbCBjb21wYWN0Ij4KICAgICAgICA8ZGl2IGNsYXNzPSJsYWJlbCI+Q29udHJvbHM8L2Rpdj4KICAgICAgICA8ZGl2IGNsYXNzPSJjb250cm9sLWhpbnQiPgogICAgICAgICAgPHNwYW4gY2xhc3M9ImtiZCI+QXJyb3cgS2V5czwvc3Bhbj4gTW92ZSDCtwogICAgICAgICAgPHNwYW4gY2xhc3M9ImtiZCI+U3BhY2U8L3NwYW4+IEJ1cnN0IEZpcmUgwrcKICAgICAgICAgIDxzcGFuIGNsYXNzPSJrYmQiPlNoaWZ0PC9zcGFuPiBTaGllbGQKICAgICAgICA8L2Rpdj4KICAgICAgPC9kaXY+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBpZD0icmV0aWNsZSI+PC9kaXY+CgogIDxkaXYgY2xhc3M9Im92ZXJsYXkiIGlkPSJzdGFydE92ZXJsYXkiPgogICAgPGRpdiBjbGFzcz0iY2FyZCI+CiAgICAgIDxoMSBjbGFzcz0idGl0bGUiPk5lYnVsYSBWYW5ndWFyZCAzRDwvaDE+CiAgICAgIDxwIGNsYXNzPSJzdWJ0aXRsZSI+RW5lbXkgcHJlc3N1cmUgZXNjYWxhdGVzIGV2ZXJ5IHdhdmUuIEtlZXAgbW92aW5nLCBmaXJlIGluIGJ1cnN0cywgYW5kIHRpbWUgeW91ciBzaGllbGQuPC9wPgogICAgICA8cCBjbGFzcz0icXVpY2tsaW5lIj48c3Ryb25nPlF1aWNrIFN0YXJ0Ojwvc3Ryb25nPiBNb3ZlIHdpdGggQXJyb3cgS2V5cywgZmlyZSB3aXRoIFNwYWNlLCBhYnNvcmIgZGFuZ2VyIHdpdGggU2hpZnQuPC9wPgoKICAgICAgPGRpdiBjbGFzcz0iZ3JpZCI+CiAgICAgICAgPGRpdiBjbGFzcz0iYm94Ij4KICAgICAgICAgIDxoMz5NaXNzaW9uPC9oMz4KICAgICAgICAgIDxwPkRlc3Ryb3kgaW5jb21pbmcgc2hpcHMgYW5kIHN0YXkgYWxpdmUgYXMgbG9uZyBhcyBwb3NzaWJsZS48L3A+CiAgICAgICAgICA8cD5XYXZlIGxldmVsIHJpc2VzIG92ZXIgdGltZSBhbmQgaW5jcmVhc2VzIGVuZW15IGludGVuc2l0eS48L3A+CiAgICAgICAgPC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0iYm94Ij4KICAgICAgICAgIDxoMz5UaHJlYXRzPC9oMz4KICAgICAgICAgIDxwPjxzdHJvbmc+U2NvdXQ6PC9zdHJvbmc+IGZhc3QgbW92ZXJzLCBkaXJlY3Qgc2hvdHMuPC9wPgogICAgICAgICAgPHA+PHN0cm9uZz5Cb21iZXI6PC9zdHJvbmc+IHNsb3dlciwgdHJpcGxlIHBsYXNtYSB2b2xsZXlzLjwvcD4KICAgICAgICAgIDxwPjxzdHJvbmc+U25pcGVyIERyb25lOjwvc3Ryb25nPiBjaGFyZ2VkIHBpZXJjaW5nIGJlYW0uPC9wPgogICAgICAgIDwvZGl2PgogICAgICAgIDxkaXYgY2xhc3M9ImJveCI+CiAgICAgICAgICA8aDM+U3lzdGVtczwvaDM+CiAgICAgICAgICA8cD48c3Ryb25nPkJ1cnN0IEZpcmU6PC9zdHJvbmc+IDMtc2hvdCBwYXR0ZXJuIHdpdGggc2hvcnQgY29vbGRvd24uPC9wPgogICAgICAgICAgPHA+PHN0cm9uZz5TaGllbGQ6PC9zdHJvbmc+IHRlbXBvcmFyeSBpbnZ1bG5lcmFiaWxpdHk7IHdhdGNoIGNvb2xkb3duIGJhci48L3A+CiAgICAgICAgPC9kaXY+CiAgICAgICAgPGRpdiBjbGFzcz0iYm94Ij4KICAgICAgICAgIDxoMz5Db250cm9sIFJlbWluZGVyPC9oMz4KICAgICAgICAgIDxwPjxzcGFuIGNsYXNzPSJrYmQiPkFycm93IEtleXM8L3NwYW4+IG1vdmUgaW4gbGFuZXMuPC9wPgogICAgICAgICAgPHA+PHNwYW4gY2xhc3M9ImtiZCI+U3BhY2U8L3NwYW4+IGZpcmVzIGJ1cnN0LiA8c3BhbiBjbGFzcz0ia2JkIj5TaGlmdDwvc3Bhbj4gZW5hYmxlcyBzaGllbGQuPC9wPgogICAgICAgIDwvZGl2PgogICAgICA8L2Rpdj4KICAgICAgPGJ1dHRvbiBjbGFzcz0iYnRuIiBpZD0ic3RhcnRCdG4iPlN0YXJ0IE1pc3Npb248L2J1dHRvbj4KICAgIDwvZGl2PgogIDwvZGl2PgoKICA8ZGl2IGNsYXNzPSJvdmVybGF5IiBpZD0iZ2FtZU92ZXJPdmVybGF5IiBzdHlsZT0iZGlzcGxheTpub25lOyI+CiAgICA8ZGl2IGNsYXNzPSJjYXJkIiBzdHlsZT0idGV4dC1hbGlnbjpjZW50ZXI7Ij4KICAgICAgPGgxIGNsYXNzPSJ0aXRsZSI+TWlzc2lvbiBGYWlsZWQ8L2gxPgogICAgICA8cCBjbGFzcz0ic3VidGl0bGUiIGlkPSJmaW5hbFN0YXRzIj5GaW5hbCBTY29yZTogMCDCtyBXYXZlIFJlYWNoZWQ6IDE8L3A+CiAgICAgIDxwIGNsYXNzPSJxdWlja2xpbmUiIHN0eWxlPSJ0ZXh0LWFsaWduOmxlZnQiPlRpcDoga2VlcCBkcmlmdGluZyBkdXJpbmcgZW5lbXkgdGVsZWdyYXBocywgdGhlbiB1c2UgPHNwYW4gY2xhc3M9ImtiZCI+U2hpZnQ8L3NwYW4+IGZvciBoaWdoLXJpc2sgdm9sbGV5cy48L3A+CiAgICAgIDxidXR0b24gY2xhc3M9ImJ0biIgaWQ9InJlc3RhcnRCdG4iPlJlZGVwbG95PC9idXR0b24+CiAgICA8L2Rpdj4KICA8L2Rpdj4KCiAgPGRpdiBpZD0iZmFsbGJhY2tJbmZvIj5SdW5uaW5nIGZhbGxiYWNrIDJEIG1vZGUgKFdlYkdMIGluaXRpYWxpemF0aW9uIGZhaWxlZCkuPC9kaXY+CgogIDxzY3JpcHQgdHlwZT0iaW1wb3J0bWFwIj4KICB7CiAgICAiaW1wb3J0cyI6IHsKICAgICAgInRocmVlIjogImh0dHBzOi8vY2RuLmpzZGVsaXZyLm5ldC9ucG0vdGhyZWVAMC4xNjAuMC9idWlsZC90aHJlZS5tb2R1bGUuanMiCiAgICB9CiAgfQogIDwvc2NyaXB0PgoKICA8c2NyaXB0IHR5cGU9Im1vZHVsZSI+CiAgICBsZXQgVEhSRUU7IC8vIGR5bmFtaXNjaCBpbiBpbml0KCkgZ2VsYWRlbiAtPiBPZmZsaW5lLUZhbGxiYWNrIG1vZWdsaWNoCgogICAgY29uc3QgZ2FtZUNhbnZhcyA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJnYW1lIik7CiAgICBjb25zdCBmYWxsYmFja0NhbnZhcyA9IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJmYWxsYmFjayIpOwogICAgY29uc3QgZmFsbGJhY2tJbmZvID0gZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoImZhbGxiYWNrSW5mbyIpOwoKICAgIGNvbnN0IHVpID0gewogICAgICBzY29yZTogZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoInNjb3JlIiksCiAgICAgIHdhdmU6IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJ3YXZlIiksCiAgICAgIGxpdmVzOiBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgibGl2ZXMiKSwKICAgICAgc2hpZWxkVGV4dDogZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoInNoaWVsZFRleHQiKSwKICAgICAgc2hpZWxkRmlsbDogZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoInNoaWVsZEZpbGwiKSwKICAgICAgc3RhcnRPdmVybGF5OiBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgic3RhcnRPdmVybGF5IiksCiAgICAgIGdhbWVPdmVyT3ZlcmxheTogZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoImdhbWVPdmVyT3ZlcmxheSIpLAogICAgICBmaW5hbFN0YXRzOiBkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgiZmluYWxTdGF0cyIpLAogICAgICBzdGFydEJ0bjogZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoInN0YXJ0QnRuIiksCiAgICAgIHJlc3RhcnRCdG46IGRvY3VtZW50LmdldEVsZW1lbnRCeUlkKCJyZXN0YXJ0QnRuIikKICAgIH07CgogICAgY29uc3Qga2V5cyA9IE9iamVjdC5jcmVhdGUobnVsbCk7CiAgICBhZGRFdmVudExpc3RlbmVyKCJrZXlkb3duIiwgKGUpPT57CiAgICAgIGtleXNbZS5jb2RlXSA9IHRydWU7CiAgICAgIGlmIChbIkFycm93VXAiLCJBcnJvd0Rvd24iLCJBcnJvd0xlZnQiLCJBcnJvd1JpZ2h0IiwiU3BhY2UiLCJTaGlmdExlZnQiLCJTaGlmdFJpZ2h0Il0uaW5jbHVkZXMoZS5jb2RlKSkgZS5wcmV2ZW50RGVmYXVsdCgpOwogICAgfSwge3Bhc3NpdmU6ZmFsc2V9KTsKICAgIGFkZEV2ZW50TGlzdGVuZXIoImtleXVwIiwgKGUpPT57IGtleXNbZS5jb2RlXSA9IGZhbHNlOyB9KTsKCiAgICBsZXQgdXNlRmFsbGJhY2sgPSBmYWxzZTsKCiAgICBjbGFzcyBHYW1lM0QgewogICAgICBjb25zdHJ1Y3RvcihjYW52YXMpewogICAgICAgIHRoaXMuY2FudmFzID0gY2FudmFzOwogICAgICAgIHRoaXMuc2NlbmUgPSBuZXcgVEhSRUUuU2NlbmUoKTsKICAgICAgICB0aGlzLmNsb2NrID0gbmV3IFRIUkVFLkNsb2NrKCk7CiAgICAgICAgdGhpcy5yZW5kZXJlciA9IG5ldyBUSFJFRS5XZWJHTFJlbmRlcmVyKHtjYW52YXMsIGFudGlhbGlhczp0cnVlLCBhbHBoYTpmYWxzZSwgcG93ZXJQcmVmZXJlbmNlOiJoaWdoLXBlcmZvcm1hbmNlIn0pOwogICAgICAgIHRoaXMucmVuZGVyZXIuc2V0UGl4ZWxSYXRpbyhNYXRoLm1pbihkZXZpY2VQaXhlbFJhdGlvLCAyKSk7CiAgICAgICAgdGhpcy5yZW5kZXJlci5zZXRTaXplKGlubmVyV2lkdGgsIGlubmVySGVpZ2h0KTsKICAgICAgICB0aGlzLnJlbmRlcmVyLm91dHB1dENvbG9yU3BhY2UgPSBUSFJFRS5TUkdCQ29sb3JTcGFjZTsKICAgICAgICB0aGlzLnJlbmRlcmVyLnRvbmVNYXBwaW5nID0gVEhSRUUuQUNFU0ZpbG1pY1RvbmVNYXBwaW5nOwogICAgICAgIHRoaXMucmVuZGVyZXIudG9uZU1hcHBpbmdFeHBvc3VyZSA9IDEuMTsKCiAgICAgICAgdGhpcy5jYW1lcmEgPSBuZXcgVEhSRUUuUGVyc3BlY3RpdmVDYW1lcmEoNjQsIGlubmVyV2lkdGgvaW5uZXJIZWlnaHQsIDAuMSwgMzAwKTsKICAgICAgICB0aGlzLmNhbWVyYS5wb3NpdGlvbi5zZXQoMCwgNC41LCA5LjUpOwoKICAgICAgICB0aGlzLnJ1bm5pbmcgPSBmYWxzZTsKICAgICAgICB0aGlzLmdhbWVPdmVyID0gZmFsc2U7CgogICAgICAgIHRoaXMuYm91bmRhcnlYID0gNy41OwogICAgICAgIHRoaXMuYm91bmRhcnlZID0gNC4yOwoKICAgICAgICB0aGlzLnNjb3JlID0gMDsKICAgICAgICB0aGlzLndhdmUgPSAxOwogICAgICAgIHRoaXMubGl2ZXMgPSAzOwogICAgICAgIHRoaXMud2F2ZVRpbWVyID0gMDsKCiAgICAgICAgdGhpcy5wbGF5ZXIgPSBudWxsOwogICAgICAgIHRoaXMucGxheWVySGl0Rmxhc2ggPSAwOwoKICAgICAgICB0aGlzLnBsYXllckJ1bGxldHMgPSBbXTsKICAgICAgICB0aGlzLmVuZW15QnVsbGV0cyA9IFtdOwogICAgICAgIHRoaXMuZW5lbWllcyA9IFtdOwogICAgICAgIHRoaXMucGFydGljbGVzID0gW107CgogICAgICAgIHRoaXMubGFzdFNob3QgPSAwOwogICAgICAgIHRoaXMuYnVyc3RMZWZ0ID0gMDsKICAgICAgICB0aGlzLm5leHRCdXJzdFNob3QgPSAwOwogICAgICAgIHRoaXMuYnVyc3RDb29sZG93biA9IDAuMjY7CiAgICAgICAgdGhpcy5idXJzdFNwYWNpbmcgPSAwLjA3OwoKICAgICAgICB0aGlzLnNoaWVsZER1cmF0aW9uID0gMS41OwogICAgICAgIHRoaXMuc2hpZWxkQ29vbGRvd24gPSA2LjU7CiAgICAgICAgdGhpcy5zaGllbGRBY3RpdmUgPSAwOwogICAgICAgIHRoaXMuc2hpZWxkUmVhZHlBdCA9IDA7CgogICAgICAgIHRoaXMuZW5lbXlTcGF3bkFjY3VtID0gMDsKICAgICAgICB0aGlzLnRtcFYgPSBuZXcgVEhSRUUuVmVjdG9yMygpOwoKICAgICAgICB0aGlzLnNldHVwU2NlbmUoKTsKICAgICAgICB0aGlzLnJlc2V0KCk7CiAgICAgICAgYWRkRXZlbnRMaXN0ZW5lcigicmVzaXplIiwgKCk9PnRoaXMucmVzaXplKCkpOwogICAgICB9CgogICAgICBzZXR1cFNjZW5lKCl7CiAgICAgICAgY29uc3QgYW1iaWVudCA9IG5ldyBUSFJFRS5BbWJpZW50TGlnaHQoMHg1NDcyZmYsIDAuNSk7CiAgICAgICAgdGhpcy5zY2VuZS5hZGQoYW1iaWVudCk7CgogICAgICAgIGNvbnN0IGtleSA9IG5ldyBUSFJFRS5EaXJlY3Rpb25hbExpZ2h0KDB4OWNkMWZmLCAxLjE1KTsKICAgICAgICBrZXkucG9zaXRpb24uc2V0KDYsIDEwLCA2KTsKICAgICAgICB0aGlzLnNjZW5lLmFkZChrZXkpOwoKICAgICAgICBjb25zdCByaW0gPSBuZXcgVEhSRUUuUG9pbnRMaWdodCgweGZmNWNkNSwgMS4yLCA0MCk7CiAgICAgICAgcmltLnBvc2l0aW9uLnNldCgtOCwgNCwgLTEwKTsKICAgICAgICB0aGlzLnNjZW5lLmFkZChyaW0pOwoKICAgICAgICB0aGlzLnNjZW5lLmZvZyA9IG5ldyBUSFJFRS5Gb2dFeHAyKDB4MDkwYjE4LCAwLjAyOCk7CgogICAgICAgIGNvbnN0IHN0YXJHZW8gPSBuZXcgVEhSRUUuQnVmZmVyR2VvbWV0cnkoKTsKICAgICAgICBjb25zdCBzdGFyQ291bnQgPSAxNjAwOwogICAgICAgIGNvbnN0IHBvcyA9IG5ldyBGbG9hdDMyQXJyYXkoc3RhckNvdW50KjMpOwogICAgICAgIGNvbnN0IGNvbCA9IG5ldyBGbG9hdDMyQXJyYXkoc3RhckNvdW50KjMpOwogICAgICAgIGZvcihsZXQgaT0wO2k8c3RhckNvdW50O2krKyl7CiAgICAgICAgICBjb25zdCByID0gNjAgKyBNYXRoLnJhbmRvbSgpKjEzMDsKICAgICAgICAgIGNvbnN0IGEgPSBNYXRoLnJhbmRvbSgpKk1hdGguUEkqMjsKICAgICAgICAgIGNvbnN0IHkgPSAoTWF0aC5yYW5kb20oKS0wLjUpKjU1OwogICAgICAgICAgcG9zW2kqMyswXSA9IE1hdGguY29zKGEpKnIgKyAoTWF0aC5yYW5kb20oKS0wLjUpKjIwOwogICAgICAgICAgcG9zW2kqMysxXSA9IHk7CiAgICAgICAgICBwb3NbaSozKzJdID0gLU1hdGgucmFuZG9tKCkqMjIwIC0gMTA7CiAgICAgICAgICBjb25zdCBjID0gbmV3IFRIUkVFLkNvbG9yKCkuc2V0SFNMKDAuNTYgKyBNYXRoLnJhbmRvbSgpKjAuMTgsIDAuOCwgMC43NSk7CiAgICAgICAgICBjb2xbaSozXSA9IGMucjsgY29sW2kqMysxXT1jLmc7IGNvbFtpKjMrMl09Yy5iOwogICAgICAgIH0KICAgICAgICBzdGFyR2VvLnNldEF0dHJpYnV0ZSgicG9zaXRpb24iLCBuZXcgVEhSRUUuQnVmZmVyQXR0cmlidXRlKHBvcywzKSk7CiAgICAgICAgc3Rhckdlby5zZXRBdHRyaWJ1dGUoImNvbG9yIiwgbmV3IFRIUkVFLkJ1ZmZlckF0dHJpYnV0ZShjb2wsMykpOwogICAgICAgIGNvbnN0IHN0YXJNYXQgPSBuZXcgVEhSRUUuUG9pbnRzTWF0ZXJpYWwoe3NpemU6MC40NSwgdmVydGV4Q29sb3JzOnRydWUsIHRyYW5zcGFyZW50OnRydWUsIG9wYWNpdHk6MC45LCBkZXB0aFdyaXRlOmZhbHNlfSk7CiAgICAgICAgdGhpcy5zdGFycyA9IG5ldyBUSFJFRS5Qb2ludHMoc3Rhckdlbywgc3Rhck1hdCk7CiAgICAgICAgdGhpcy5zY2VuZS5hZGQodGhpcy5zdGFycyk7CgogICAgICAgIGNvbnN0IG5lYkdlbyA9IG5ldyBUSFJFRS5QbGFuZUdlb21ldHJ5KDIyMCwgMTIwKTsKICAgICAgICBjb25zdCBuZWJNYXQgPSBuZXcgVEhSRUUuU2hhZGVyTWF0ZXJpYWwoewogICAgICAgICAgdHJhbnNwYXJlbnQ6dHJ1ZSwKICAgICAgICAgIGRlcHRoV3JpdGU6ZmFsc2UsCiAgICAgICAgICB1bmlmb3Jtczp7IHQ6e3ZhbHVlOjB9IH0sCiAgICAgICAgICB2ZXJ0ZXhTaGFkZXI6YAogICAgICAgICAgICB2YXJ5aW5nIHZlYzIgdlV2OwogICAgICAgICAgICB2b2lkIG1haW4oKXt2VXY9dXY7Z2xfUG9zaXRpb249cHJvamVjdGlvbk1hdHJpeCptb2RlbFZpZXdNYXRyaXgqdmVjNChwb3NpdGlvbiwxLjApO30KICAgICAgICAgIGAsCiAgICAgICAgICBmcmFnbWVudFNoYWRlcjpgCiAgICAgICAgICAgIHZhcnlpbmcgdmVjMiB2VXY7CiAgICAgICAgICAgIHVuaWZvcm0gZmxvYXQgdDsKICAgICAgICAgICAgZmxvYXQgaGFzaCh2ZWMyIHApe3JldHVybiBmcmFjdChzaW4oZG90KHAsdmVjMigxMjcuMSwzMTEuNykpKSo0Mzc1OC41NDUzKTt9CiAgICAgICAgICAgIGZsb2F0IG5vaXNlKHZlYzIgcCl7CiAgICAgICAgICAgICAgdmVjMiBpPWZsb29yKHApLGY9ZnJhY3QocCk7CiAgICAgICAgICAgICAgZmxvYXQgYT1oYXNoKGkpLCBiPWhhc2goaSt2ZWMyKDEsMCkpLCBjPWhhc2goaSt2ZWMyKDAsMSkpLCBkPWhhc2goaSt2ZWMyKDEsMSkpOwogICAgICAgICAgICAgIHZlYzIgdT1mKmYqKDMuMC0yLjAqZik7CiAgICAgICAgICAgICAgcmV0dXJuIG1peChhLGIsdS54KSsoYy1hKSp1LnkqKDEuMC11LngpKyhkLWIpKnUueCp1Lnk7CiAgICAgICAgICAgIH0KICAgICAgICAgICAgdm9pZCBtYWluKCl7CiAgICAgICAgICAgICAgdmVjMiBwPXZVdio0LjA7CiAgICAgICAgICAgICAgZmxvYXQgbj1ub2lzZShwK3ZlYzIodCowLjAyLC10KjAuMDEpKSowLjcgKyBub2lzZShwKjIuMy12ZWMyKDAuMCx0KjAuMDMpKSowLjM7CiAgICAgICAgICAgICAgdmVjMyBjMT12ZWMzKDAuMTYsMC4xMiwwLjQyKSwgYzI9dmVjMygwLjA2LDAuMzYsMC42MiksIGMzPXZlYzMoMC41MiwwLjE0LDAuNTQpOwogICAgICAgICAgICAgIHZlYzMgY29sPW1peChjMSxjMixzbW9vdGhzdGVwKDAuMiwwLjc1LG4pKTsKICAgICAgICAgICAgICBjb2w9bWl4KGNvbCxjMyxzbW9vdGhzdGVwKDAuNjgsMS4wLG4pKTsKICAgICAgICAgICAgICBmbG9hdCBhPXNtb290aHN0ZXAoMC4xLDAuOTUsbikqMC40ODsKICAgICAgICAgICAgICBnbF9GcmFnQ29sb3I9dmVjNChjb2wsYSk7CiAgICAgICAgICAgIH0KICAgICAgICAgIGAKICAgICAgICB9KTsKICAgICAgICB0aGlzLm5lYnVsYSA9IG5ldyBUSFJFRS5NZXNoKG5lYkdlbywgbmViTWF0KTsKICAgICAgICB0aGlzLm5lYnVsYS5wb3NpdGlvbi5zZXQoMCwgMCwgLTk1KTsKICAgICAgICB0aGlzLnNjZW5lLmFkZCh0aGlzLm5lYnVsYSk7CgogICAgICAgIHRoaXMuY3JlYXRlUGxheWVyKCk7CiAgICAgIH0KCiAgICAgIGNyZWF0ZVBsYXllcigpewogICAgICAgIGNvbnN0IGcgPSBuZXcgVEhSRUUuR3JvdXAoKTsKCiAgICAgICAgY29uc3QgYm9keSA9IG5ldyBUSFJFRS5NZXNoKAogICAgICAgICAgbmV3IFRIUkVFLkNvbmVHZW9tZXRyeSgwLjU1LCAxLjgsIDEwKSwKICAgICAgICAgIG5ldyBUSFJFRS5NZXNoU3RhbmRhcmRNYXRlcmlhbCh7Y29sb3I6MHg3ZmIxZmYsIG1ldGFsbmVzczowLjM1LCByb3VnaG5lc3M6MC4zMiwgZW1pc3NpdmU6MHgxMTIyNDQsIGVtaXNzaXZlSW50ZW5zaXR5OjAuNzV9KQogICAgICAgICk7CiAgICAgICAgYm9keS5yb3RhdGlvbi54ID0gTWF0aC5QSS8yOwogICAgICAgIGJvZHkucG9zaXRpb24ueiA9IDAuMTsKICAgICAgICBnLmFkZChib2R5KTsKCiAgICAgICAgY29uc3Qgd2luZ0dlbyA9IG5ldyBUSFJFRS5Cb3hHZW9tZXRyeSgxLjY1LCAwLjA4LCAwLjU1KTsKICAgICAgICBjb25zdCB3aW5nTWF0ID0gbmV3IFRIUkVFLk1lc2hTdGFuZGFyZE1hdGVyaWFsKHtjb2xvcjoweDZmODNmZiwgbWV0YWxuZXNzOjAuNSwgcm91Z2huZXNzOjAuMzgsIGVtaXNzaXZlOjB4MWUyZjllLCBlbWlzc2l2ZUludGVuc2l0eTowLjh9KTsKICAgICAgICBjb25zdCB3aW5nID0gbmV3IFRIUkVFLk1lc2god2luZ0dlbywgd2luZ01hdCk7CiAgICAgICAgd2luZy5wb3NpdGlvbi5zZXQoMCwgLTAuMDUsIC0wLjA1KTsKICAgICAgICBnLmFkZCh3aW5nKTsKCiAgICAgICAgY29uc3QgY29ja3BpdCA9IG5ldyBUSFJFRS5NZXNoKAogICAgICAgICAgbmV3IFRIUkVFLlNwaGVyZUdlb21ldHJ5KDAuMjIsIDEwLCA4KSwKICAgICAgICAgIG5ldyBUSFJFRS5NZXNoU3RhbmRhcmRNYXRlcmlhbCh7Y29sb3I6MHg4ZmZiZmYsIGVtaXNzaXZlOjB4M2FmZmZmLCBlbWlzc2l2ZUludGVuc2l0eToxLjIsIG1ldGFsbmVzczowLjIsIHJvdWdobmVzczowLjEyfSkKICAgICAgICApOwogICAgICAgIGNvY2twaXQucG9zaXRpb24uc2V0KDAsIDAuMTYsIDAuMzIpOwogICAgICAgIGcuYWRkKGNvY2twaXQpOwoKICAgICAgICBjb25zdCB0aHJ1c3RlciA9IG5ldyBUSFJFRS5NZXNoKAogICAgICAgICAgbmV3IFRIUkVFLkN5bGluZGVyR2VvbWV0cnkoMC4wOCwgMC4yLCAwLjUsIDEwKSwKICAgICAgICAgIG5ldyBUSFJFRS5NZXNoQmFzaWNNYXRlcmlhbCh7Y29sb3I6MHg2ZGZmZjV9KQogICAgICAgICk7CiAgICAgICAgdGhydXN0ZXIucm90YXRpb24ueCA9IE1hdGguUEkvMjsKICAgICAgICB0aHJ1c3Rlci5wb3NpdGlvbi56ID0gLTAuODI7CiAgICAgICAgZy5hZGQodGhydXN0ZXIpOwoKICAgICAgICBjb25zdCBzaGllbGQgPSBuZXcgVEhSRUUuTWVzaCgKICAgICAgICAgIG5ldyBUSFJFRS5TcGhlcmVHZW9tZXRyeSgwLjk1LCAxOCwgMTQpLAogICAgICAgICAgbmV3IFRIUkVFLk1lc2hCYXNpY01hdGVyaWFsKHtjb2xvcjoweDY1ZDZmZiwgdHJhbnNwYXJlbnQ6dHJ1ZSwgb3BhY2l0eTowLjAsIHdpcmVmcmFtZTp0cnVlfSkKICAgICAgICApOwogICAgICAgIGcuYWRkKHNoaWVsZCk7CgogICAgICAgIGcucG9zaXRpb24uc2V0KDAsIC0wLjUsIDIuOCk7CiAgICAgICAgdGhpcy5zY2VuZS5hZGQoZyk7CgogICAgICAgIHRoaXMucGxheWVyID0ge2dyb3VwOmcsIHRocnVzdGVyLCBzaGllbGR9OwogICAgICB9CgogICAgICByZXNldCgpewogICAgICAgIHRoaXMuc2NvcmUgPSAwOwogICAgICAgIHRoaXMud2F2ZSA9IDE7CiAgICAgICAgdGhpcy5saXZlcyA9IDM7CiAgICAgICAgdGhpcy53YXZlVGltZXIgPSAwOwogICAgICAgIHRoaXMucGxheWVyLmdyb3VwLnBvc2l0aW9uLnNldCgwLC0wLjUsMi44KTsKICAgICAgICB0aGlzLnBsYXllci5ncm91cC5yb3RhdGlvbi5zZXQoMCwwLDApOwogICAgICAgIHRoaXMucGxheWVySGl0Rmxhc2ggPSAwOwogICAgICAgIHRoaXMubGFzdFNob3QgPSAwOwogICAgICAgIHRoaXMuYnVyc3RMZWZ0ID0gMDsKICAgICAgICB0aGlzLm5leHRCdXJzdFNob3QgPSAwOwogICAgICAgIHRoaXMuc2hpZWxkQWN0aXZlID0gMDsKICAgICAgICB0aGlzLnNoaWVsZFJlYWR5QXQgPSAwOwogICAgICAgIHRoaXMuZW5lbXlTcGF3bkFjY3VtID0gMDsKICAgICAgICB0aGlzLmdhbWVPdmVyID0gZmFsc2U7CgogICAgICAgIGZvciAoY29uc3QgYiBvZiB0aGlzLnBsYXllckJ1bGxldHMpIHRoaXMuc2NlbmUucmVtb3ZlKGIubWVzaCk7CiAgICAgICAgZm9yIChjb25zdCBiIG9mIHRoaXMuZW5lbXlCdWxsZXRzKSB0aGlzLnNjZW5lLnJlbW92ZShiLm1lc2gpOwogICAgICAgIGZvciAoY29uc3QgZSBvZiB0aGlzLmVuZW1pZXMpIHRoaXMuc2NlbmUucmVtb3ZlKGUuZ3JvdXApOwogICAgICAgIGZvciAoY29uc3QgcCBvZiB0aGlzLnBhcnRpY2xlcykgdGhpcy5zY2VuZS5yZW1vdmUocC5tZXNoKTsKICAgICAgICB0aGlzLnBsYXllckJ1bGxldHMubGVuZ3RoID0gMDsKICAgICAgICB0aGlzLmVuZW15QnVsbGV0cy5sZW5ndGggPSAwOwogICAgICAgIHRoaXMuZW5lbWllcy5sZW5ndGggPSAwOwogICAgICAgIHRoaXMucGFydGljbGVzLmxlbmd0aCA9IDA7CgogICAgICAgIHVpLnNjb3JlLnRleHRDb250ZW50ID0gIjAiOwogICAgICAgIHVpLndhdmUudGV4dENvbnRlbnQgPSAiMSI7CiAgICAgICAgdWkubGl2ZXMudGV4dENvbnRlbnQgPSAiMyI7CiAgICAgICAgdWkuc2hpZWxkVGV4dC50ZXh0Q29udGVudCA9ICJSZWFkeSI7CiAgICAgICAgdWkuc2hpZWxkRmlsbC5zdHlsZS53aWR0aCA9ICIxMDAlIjsKICAgICAgICB1aS5zaGllbGRGaWxsLnN0eWxlLmJhY2tncm91bmQgPSAibGluZWFyLWdyYWRpZW50KDkwZGVnLCAjNTNmZjllLCAjNGViOGZmKSI7CiAgICAgIH0KCiAgICAgIHN0YXJ0KCl7CiAgICAgICAgdGhpcy5ydW5uaW5nID0gdHJ1ZTsKICAgICAgICB0aGlzLmNsb2NrLnN0YXJ0KCk7CiAgICAgICAgdGhpcy5sb29wKCk7CiAgICAgIH0KCiAgICAgIHNwYXduUGxheWVyQnVsbGV0KG9mZnNldFg9MCl7CiAgICAgICAgY29uc3QgbWVzaCA9IG5ldyBUSFJFRS5NZXNoKAogICAgICAgICAgbmV3IFRIUkVFLkN5bGluZGVyR2VvbWV0cnkoMC4wMzUsIDAuMDYsIDAuNzUsIDgpLAogICAgICAgICAgbmV3IFRIUkVFLk1lc2hCYXNpY01hdGVyaWFsKHtjb2xvcjoweDY0ZjJmZn0pCiAgICAgICAgKTsKICAgICAgICBtZXNoLnJvdGF0aW9uLnggPSBNYXRoLlBJLzI7CiAgICAgICAgbWVzaC5wb3NpdGlvbi5jb3B5KHRoaXMucGxheWVyLmdyb3VwLnBvc2l0aW9uKTsKICAgICAgICBtZXNoLnBvc2l0aW9uLnggKz0gb2Zmc2V0WDsKICAgICAgICBtZXNoLnBvc2l0aW9uLnkgKz0gMC4wNTsKICAgICAgICBtZXNoLnBvc2l0aW9uLnogLT0gMS4xOwogICAgICAgIHRoaXMuc2NlbmUuYWRkKG1lc2gpOwogICAgICAgIHRoaXMucGxheWVyQnVsbGV0cy5wdXNoKHttZXNoLCB2ZWw6bmV3IFRIUkVFLlZlY3RvcjMoMCwwLC0zMCksIGxpZmU6Mn0pOwogICAgICB9CgogICAgICBzcGF3bkVuZW15KHR5cGUpewogICAgICAgIGNvbnN0IGcgPSBuZXcgVEhSRUUuR3JvdXAoKTsKICAgICAgICBsZXQgaHAgPSAxLCBzcGVlZCA9IDMsIGNvbG9yID0gMHhmZjZkOWYsIHNjb3JlID0gODA7CiAgICAgICAgaWYgKHR5cGUgPT09ICJib21iZXIiKXsgaHAgPSAzOyBzcGVlZCA9IDEuODsgY29sb3IgPSAweGZmYjM0Nzsgc2NvcmUgPSAxODA7IH0KICAgICAgICBpZiAodHlwZSA9PT0gInNuaXBlciIpeyBocCA9IDI7IHNwZWVkID0gMi4yOyBjb2xvciA9IDB4YWU4YmZmOyBzY29yZSA9IDIyMDsgfQoKICAgICAgICBjb25zdCBjb3JlID0gbmV3IFRIUkVFLk1lc2goCiAgICAgICAgICB0eXBlPT09ImJvbWJlciIgPyBuZXcgVEhSRUUuQm94R2VvbWV0cnkoMC45LDAuNSwwLjkpIDogbmV3IFRIUkVFLk9jdGFoZWRyb25HZW9tZXRyeSgwLjQ1LDApLAogICAgICAgICAgbmV3IFRIUkVFLk1lc2hTdGFuZGFyZE1hdGVyaWFsKHsKICAgICAgICAgICAgY29sb3IsCiAgICAgICAgICAgIGVtaXNzaXZlOiBuZXcgVEhSRUUuQ29sb3IoY29sb3IpLm11bHRpcGx5U2NhbGFyKDAuMzUpLAogICAgICAgICAgICBlbWlzc2l2ZUludGVuc2l0eTowLjg1LAogICAgICAgICAgICBtZXRhbG5lc3M6MC4zNSwKICAgICAgICAgICAgcm91Z2huZXNzOjAuNAogICAgICAgICAgfSkKICAgICAgICApOwogICAgICAgIGcuYWRkKGNvcmUpOwoKICAgICAgICBpZiAodHlwZT09PSJib21iZXIiKXsKICAgICAgICAgIGNvbnN0IHdpbmcgPSBuZXcgVEhSRUUuTWVzaChuZXcgVEhSRUUuQm94R2VvbWV0cnkoMS44LDAuMDgsMC41NSksIG5ldyBUSFJFRS5NZXNoU3RhbmRhcmRNYXRlcmlhbCh7Y29sb3I6MHhmZjhmNWMsIGVtaXNzaXZlOjB4YWEzZTIyLCBlbWlzc2l2ZUludGVuc2l0eTowLjd9KSk7CiAgICAgICAgICBnLmFkZCh3aW5nKTsKICAgICAgICB9IGVsc2UgaWYgKHR5cGU9PT0ic25pcGVyIil7CiAgICAgICAgICBjb25zdCByaW5nID0gbmV3IFRIUkVFLk1lc2gobmV3IFRIUkVFLlRvcnVzR2VvbWV0cnkoMC42LDAuMDYsOCwxOCksIG5ldyBUSFJFRS5NZXNoU3RhbmRhcmRNYXRlcmlhbCh7Y29sb3I6MHhhNThhZmYsIGVtaXNzaXZlOjB4NWY0NWZmLCBlbWlzc2l2ZUludGVuc2l0eTowLjl9KSk7CiAgICAgICAgICByaW5nLnJvdGF0aW9uLnggPSBNYXRoLlBJLzI7CiAgICAgICAgICBnLmFkZChyaW5nKTsKICAgICAgICB9IGVsc2UgewogICAgICAgICAgY29uc3QgZmluID0gbmV3IFRIUkVFLk1lc2gobmV3IFRIUkVFLkNvbmVHZW9tZXRyeSgwLjE4LDAuNSw3KSwgbmV3IFRIUkVFLk1lc2hTdGFuZGFyZE1hdGVyaWFsKHtjb2xvcjoweGZmN2VhOSwgZW1pc3NpdmU6MHg4ZDFjNGEsIGVtaXNzaXZlSW50ZW5zaXR5OjAuOH0pKTsKICAgICAgICAgIGZpbi5wb3NpdGlvbi5zZXQoMCwwLC0wLjU1KTsKICAgICAgICAgIGZpbi5yb3RhdGlvbi54ID0gLU1hdGguUEkvMjsKICAgICAgICAgIGcuYWRkKGZpbik7CiAgICAgICAgfQoKICAgICAgICBnLnBvc2l0aW9uLnNldCgoTWF0aC5yYW5kb20oKSoyLTEpKnRoaXMuYm91bmRhcnlYKjAuOTIsIChNYXRoLnJhbmRvbSgpKjItMSkqdGhpcy5ib3VuZGFyeVkqMC44LCAtMzQgLSBNYXRoLnJhbmRvbSgpKjE4KTsKICAgICAgICB0aGlzLnNjZW5lLmFkZChnKTsKCiAgICAgICAgdGhpcy5lbmVtaWVzLnB1c2goewogICAgICAgICAgdHlwZSwgZ3JvdXA6ZywgaHAsIHNwZWVkLCBzY29yZSwKICAgICAgICAgIHQ6IE1hdGgucmFuZG9tKCkqOSwKICAgICAgICAgIGF0dGFja1RpbWVyOiAwLjggKyBNYXRoLnJhbmRvbSgpKjEuMSwKICAgICAgICAgIGNoYXJnZTogMCwKICAgICAgICAgIHRlbGVncmFwaDogMAogICAgICAgIH0pOwogICAgICB9CgogICAgICBmaXJlRW5lbXlCdWxsZXQoZW5lbXksIHNwZWVkPTkuNSwgY29sb3I9MHhmZjY2ODgsIHNjYWxlPTAuMTYpewogICAgICAgIGNvbnN0IG1lc2ggPSBuZXcgVEhSRUUuTWVzaCgKICAgICAgICAgIG5ldyBUSFJFRS5TcGhlcmVHZW9tZXRyeShzY2FsZSwgOCwgOCksCiAgICAgICAgICBuZXcgVEhSRUUuTWVzaEJhc2ljTWF0ZXJpYWwoe2NvbG9yfSkKICAgICAgICApOwogICAgICAgIG1lc2gucG9zaXRpb24uY29weShlbmVteS5ncm91cC5wb3NpdGlvbik7CiAgICAgICAgY29uc3QgZGlyID0gdGhpcy5wbGF5ZXIuZ3JvdXAucG9zaXRpb24uY2xvbmUoKS5zdWIoZW5lbXkuZ3JvdXAucG9zaXRpb24pLm5vcm1hbGl6ZSgpOwogICAgICAgIHRoaXMuc2NlbmUuYWRkKG1lc2gpOwogICAgICAgIHRoaXMuZW5lbXlCdWxsZXRzLnB1c2goe21lc2gsIHZlbDpkaXIubXVsdGlwbHlTY2FsYXIoc3BlZWQpLCBsaWZlOjUsIGRhbmdlcjoxfSk7CiAgICAgIH0KCiAgICAgIGVuZW15QXR0YWNrKGVuZW15LCBkdCl7CiAgICAgICAgZW5lbXkuYXR0YWNrVGltZXIgLT0gZHQ7CiAgICAgICAgaWYgKGVuZW15LnR5cGU9PT0ic2NvdXQiKXsKICAgICAgICAgIGlmIChlbmVteS5hdHRhY2tUaW1lciA8PSAwKXsKICAgICAgICAgICAgZW5lbXkudGVsZWdyYXBoID0gMC4yMzsKICAgICAgICAgICAgZW5lbXkuYXR0YWNrVGltZXIgPSBNYXRoLm1heCgwLjcsIDEuNzUgLSB0aGlzLndhdmUqMC4wNCkgKyBNYXRoLnJhbmRvbSgpKjAuMzU7CiAgICAgICAgICB9CiAgICAgICAgICBpZiAoZW5lbXkudGVsZWdyYXBoID4gMCl7CiAgICAgICAgICAgIGVuZW15LnRlbGVncmFwaCAtPSBkdDsKICAgICAgICAgICAgZW5lbXkuZ3JvdXAuc2NhbGUuc2V0U2NhbGFyKDEgKyBNYXRoLm1heCgwLCBlbmVteS50ZWxlZ3JhcGgpKjAuNDUpOwogICAgICAgICAgICBpZiAoZW5lbXkudGVsZWdyYXBoIDw9IDApIHRoaXMuZmlyZUVuZW15QnVsbGV0KGVuZW15LCAxMS41LCAweGZmNWE4NCwgMC4xMyk7CiAgICAgICAgICB9IGVsc2UgZW5lbXkuZ3JvdXAuc2NhbGUubGVycCh0aGlzLnRtcFYuc2V0KDEsMSwxKSwgMC4xOCk7CiAgICAgICAgfQogICAgICAgIGVsc2UgaWYgKGVuZW15LnR5cGU9PT0iYm9tYmVyIil7CiAgICAgICAgICBpZiAoZW5lbXkuYXR0YWNrVGltZXIgPD0gMCl7CiAgICAgICAgICAgIGVuZW15LnRlbGVncmFwaCA9IDAuNDU7CiAgICAgICAgICAgIGVuZW15LmF0dGFja1RpbWVyID0gTWF0aC5tYXgoMS40LCAyLjkgLSB0aGlzLndhdmUqMC4wNDUpICsgTWF0aC5yYW5kb20oKSowLjU7CiAgICAgICAgICB9CiAgICAgICAgICBpZiAoZW5lbXkudGVsZWdyYXBoID4gMCl7CiAgICAgICAgICAgIGVuZW15LnRlbGVncmFwaCAtPSBkdDsKICAgICAgICAgICAgZW5lbXkuZ3JvdXAucm90YXRpb24ueiArPSBkdCoyLjY7CiAgICAgICAgICAgIGlmIChlbmVteS50ZWxlZ3JhcGggPD0gMCl7CiAgICAgICAgICAgICAgZm9yKGxldCBpPS0xO2k8PTE7aSsrKXsKICAgICAgICAgICAgICAgIGNvbnN0IG1lc2ggPSBuZXcgVEhSRUUuTWVzaChuZXcgVEhSRUUuU3BoZXJlR2VvbWV0cnkoMC4yLDgsOCksIG5ldyBUSFJFRS5NZXNoQmFzaWNNYXRlcmlhbCh7Y29sb3I6MHhmZmJiNTV9KSk7CiAgICAgICAgICAgICAgICBtZXNoLnBvc2l0aW9uLmNvcHkoZW5lbXkuZ3JvdXAucG9zaXRpb24pOwogICAgICAgICAgICAgICAgY29uc3QgdGFyZ2V0ID0gdGhpcy5wbGF5ZXIuZ3JvdXAucG9zaXRpb24uY2xvbmUoKTsKICAgICAgICAgICAgICAgIHRhcmdldC54ICs9IGkqMS4wNTsKICAgICAgICAgICAgICAgIGNvbnN0IGRpciA9IHRhcmdldC5zdWIoZW5lbXkuZ3JvdXAucG9zaXRpb24pLm5vcm1hbGl6ZSgpOwogICAgICAgICAgICAgICAgdGhpcy5zY2VuZS5hZGQobWVzaCk7CiAgICAgICAgICAgICAgICB0aGlzLmVuZW15QnVsbGV0cy5wdXNoKHttZXNoLCB2ZWw6ZGlyLm11bHRpcGx5U2NhbGFyKDcuMyksIGxpZmU6NS41LCBkYW5nZXI6MX0pOwogICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQogICAgICAgICAgfQogICAgICAgIH0KICAgICAgICBlbHNlIGlmIChlbmVteS50eXBlPT09InNuaXBlciIpewogICAgICAgICAgaWYgKGVuZW15LmF0dGFja1RpbWVyIDw9IDAgJiYgZW5lbXkuY2hhcmdlPD0wKXsKICAgICAgICAgICAgZW5lbXkuY2hhcmdlID0gMC45OwogICAgICAgICAgICBlbmVteS5hdHRhY2tUaW1lciA9IE1hdGgubWF4KDIuMCwgNC4wIC0gdGhpcy53YXZlKjAuMDUpICsgTWF0aC5yYW5kb20oKSowLjc7CiAgICAgICAgICB9CiAgICAgICAgICBpZiAoZW5lbXkuY2hhcmdlID4gMCl7CiAgICAgICAgICAgIGVuZW15LmNoYXJnZSAtPSBkdDsKICAgICAgICAgICAgZW5lbXkuZ3JvdXAuc2NhbGUuc2V0U2NhbGFyKDEuMDUgKyAoMC45LWVuZW15LmNoYXJnZSkqMC40KTsKICAgICAgICAgICAgaWYgKGVuZW15LmNoYXJnZSA8PSAwKXsKICAgICAgICAgICAgICBjb25zdCBtZXNoID0gbmV3IFRIUkVFLk1lc2gobmV3IFRIUkVFLkN5bGluZGVyR2VvbWV0cnkoMC4wOCwwLjA4LDEuMyw4KSwgbmV3IFRIUkVFLk1lc2hCYXNpY01hdGVyaWFsKHtjb2xvcjoweGNjOTlmZn0pKTsKICAgICAgICAgICAgICBtZXNoLnJvdGF0aW9uLnggPSBNYXRoLlBJLzI7CiAgICAgICAgICAgICAgbWVzaC5wb3NpdGlvbi5jb3B5KGVuZW15Lmdyb3VwLnBvc2l0aW9uKTsKICAgICAgICAgICAgICBjb25zdCBkaXIgPSB0aGlzLnBsYXllci5ncm91cC5wb3NpdGlvbi5jbG9uZSgpLnN1YihlbmVteS5ncm91cC5wb3NpdGlvbikubm9ybWFsaXplKCk7CiAgICAgICAgICAgICAgdGhpcy5zY2VuZS5hZGQobWVzaCk7CiAgICAgICAgICAgICAgdGhpcy5lbmVteUJ1bGxldHMucHVzaCh7bWVzaCwgdmVsOmRpci5tdWx0aXBseVNjYWxhcigxNCksIGxpZmU6Mi42LCBkYW5nZXI6Mn0pOwogICAgICAgICAgICB9CiAgICAgICAgICB9IGVsc2UgewogICAgICAgICAgICBlbmVteS5ncm91cC5zY2FsZS5sZXJwKHRoaXMudG1wVi5zZXQoMSwxLDEpLCAwLjIpOwogICAgICAgICAgfQogICAgICAgIH0KICAgICAgfQoKICAgICAgZXhwbG9kZShwb3NpdGlvbiwgY29sb3I9MHg4OGRkZmYsIGNvdW50PTEyLCBzcGVlZD01LjUpewogICAgICAgIGZvcihsZXQgaT0wO2k8Y291bnQ7aSsrKXsKICAgICAgICAgIGNvbnN0IG1lc2ggPSBuZXcgVEhSRUUuTWVzaCgKICAgICAgICAgICAgbmV3IFRIUkVFLlNwaGVyZUdlb21ldHJ5KDAuMDUgKyBNYXRoLnJhbmRvbSgpKjAuMDUsIDYsIDYpLAogICAgICAgICAgICBuZXcgVEhSRUUuTWVzaEJhc2ljTWF0ZXJpYWwoe2NvbG9yfSkKICAgICAgICAgICk7CiAgICAgICAgICBtZXNoLnBvc2l0aW9uLmNvcHkocG9zaXRpb24pOwogICAgICAgICAgY29uc3QgdiA9IG5ldyBUSFJFRS5WZWN0b3IzKChNYXRoLnJhbmRvbSgpKjItMSksKE1hdGgucmFuZG9tKCkqMi0xKSwoTWF0aC5yYW5kb20oKSoyLTEpKS5ub3JtYWxpemUoKS5tdWx0aXBseVNjYWxhcihzcGVlZCooMC4zK01hdGgucmFuZG9tKCkpKTsKICAgICAgICAgIHRoaXMuc2NlbmUuYWRkKG1lc2gpOwogICAgICAgICAgdGhpcy5wYXJ0aWNsZXMucHVzaCh7bWVzaCwgdmVsOnYsIGxpZmU6MC40K01hdGgucmFuZG9tKCkqMC41fSk7CiAgICAgICAgfQogICAgICB9CgogICAgICBoaXRQbGF5ZXIoZG1nPTEpewogICAgICAgIGlmICh0aGlzLnNoaWVsZEFjdGl2ZSA+IDApIHJldHVybjsKICAgICAgICB0aGlzLmxpdmVzIC09IGRtZzsKICAgICAgICB0aGlzLnBsYXllckhpdEZsYXNoID0gMC4zMjsKICAgICAgICB0aGlzLmV4cGxvZGUodGhpcy5wbGF5ZXIuZ3JvdXAucG9zaXRpb24sIDB4ZmY2Njg4LCAxMCwgNCk7CiAgICAgICAgaWYgKHRoaXMubGl2ZXMgPD0gMCl7CiAgICAgICAgICB0aGlzLmxpdmVzID0gMDsKICAgICAgICAgIHRoaXMuZ2FtZU92ZXIgPSB0cnVlOwogICAgICAgICAgdGhpcy5ydW5uaW5nID0gZmFsc2U7CiAgICAgICAgICB1aS5maW5hbFN0YXRzLnRleHRDb250ZW50ID0gYEZpbmFsIFNjb3JlOiAke3RoaXMuc2NvcmV9IMK3IFdhdmUgUmVhY2hlZDogJHt0aGlzLndhdmV9YDsKICAgICAgICAgIHVpLmdhbWVPdmVyT3ZlcmxheS5zdHlsZS5kaXNwbGF5ID0gImZsZXgiOwogICAgICAgIH0KICAgICAgfQoKICAgICAgdXBkYXRlSFVEKCl7CiAgICAgICAgdWkuc2NvcmUudGV4dENvbnRlbnQgPSBTdHJpbmcodGhpcy5zY29yZSk7CiAgICAgICAgdWkud2F2ZS50ZXh0Q29udGVudCA9IFN0cmluZyh0aGlzLndhdmUpOwogICAgICAgIHVpLmxpdmVzLnRleHRDb250ZW50ID0gU3RyaW5nKHRoaXMubGl2ZXMpOwoKICAgICAgICBpZiAodGhpcy5zaGllbGRBY3RpdmUgPiAwKXsKICAgICAgICAgIHVpLnNoaWVsZFRleHQudGV4dENvbnRlbnQgPSAiQUNUSVZFIjsKICAgICAgICAgIHVpLnNoaWVsZEZpbGwuc3R5bGUud2lkdGggPSBgJHsodGhpcy5zaGllbGRBY3RpdmUvdGhpcy5zaGllbGREdXJhdGlvbikqMTAwfSVgOwogICAgICAgICAgdWkuc2hpZWxkRmlsbC5zdHlsZS5iYWNrZ3JvdW5kID0gImxpbmVhci1ncmFkaWVudCg5MGRlZywgIzU4ZjBmZiwgIzdkOGRmZikiOwogICAgICAgIH0gZWxzZSB7CiAgICAgICAgICBjb25zdCByZW1haW4gPSBNYXRoLm1heCgwLCB0aGlzLnNoaWVsZFJlYWR5QXQgLSBwZXJmb3JtYW5jZS5ub3coKS8xMDAwKTsKICAgICAgICAgIGlmIChyZW1haW48PTApewogICAgICAgICAgICB1aS5zaGllbGRUZXh0LnRleHRDb250ZW50ID0gIlJlYWR5IjsKICAgICAgICAgICAgdWkuc2hpZWxkRmlsbC5zdHlsZS53aWR0aCA9ICIxMDAlIjsKICAgICAgICAgICAgdWkuc2hpZWxkRmlsbC5zdHlsZS5iYWNrZ3JvdW5kID0gImxpbmVhci1ncmFkaWVudCg5MGRlZywgIzUzZmY5ZSwgIzRlYjhmZikiOwogICAgICAgICAgfSBlbHNlIHsKICAgICAgICAgICAgdWkuc2hpZWxkVGV4dC50ZXh0Q29udGVudCA9IGAke3JlbWFpbi50b0ZpeGVkKDEpfXNgOwogICAgICAgICAgICBjb25zdCBwID0gKDEgLSByZW1haW4vdGhpcy5zaGllbGRDb29sZG93bikqMTAwOwogICAgICAgICAgICB1aS5zaGllbGRGaWxsLnN0eWxlLndpZHRoID0gYCR7cH0lYDsKICAgICAgICAgICAgdWkuc2hpZWxkRmlsbC5zdHlsZS5iYWNrZ3JvdW5kID0gImxpbmVhci1ncmFkaWVudCg5MGRlZywgI2ZmOGY3MCwgI2ZmYzI3YSkiOwogICAgICAgICAgfQogICAgICAgIH0KICAgICAgfQoKICAgICAgdXBkYXRlKGR0KXsKICAgICAgICBpZiAoIXRoaXMucnVubmluZykgcmV0dXJuOwoKICAgICAgICB0aGlzLndhdmVUaW1lciArPSBkdDsKICAgICAgICBpZiAodGhpcy53YXZlVGltZXIgPiAyMil7CiAgICAgICAgICB0aGlzLndhdmUrKzsKICAgICAgICAgIHRoaXMud2F2ZVRpbWVyID0gMDsKICAgICAgICB9CgogICAgICAgIGNvbnN0IG1vdmVTcGVlZCA9IDguMjsKICAgICAgICBjb25zdCBwID0gdGhpcy5wbGF5ZXIuZ3JvdXAucG9zaXRpb247CiAgICAgICAgaWYgKGtleXMuQXJyb3dMZWZ0KSBwLnggLT0gbW92ZVNwZWVkKmR0OwogICAgICAgIGlmIChrZXlzLkFycm93UmlnaHQpIHAueCArPSBtb3ZlU3BlZWQqZHQ7CiAgICAgICAgaWYgKGtleXMuQXJyb3dVcCkgcC55ICs9IG1vdmVTcGVlZCpkdDsKICAgICAgICBpZiAoa2V5cy5BcnJvd0Rvd24pIHAueSAtPSBtb3ZlU3BlZWQqZHQ7CiAgICAgICAgcC54ID0gTWF0aC5tYXgoLXRoaXMuYm91bmRhcnlYLCBNYXRoLm1pbih0aGlzLmJvdW5kYXJ5WCwgcC54KSk7CiAgICAgICAgcC55ID0gTWF0aC5tYXgoLXRoaXMuYm91bmRhcnlZLCBNYXRoLm1pbih0aGlzLmJvdW5kYXJ5WSwgcC55KSk7CgogICAgICAgIGNvbnN0IHR4ID0gKGtleXMuQXJyb3dMZWZ0Py0xOjApKyhrZXlzLkFycm93UmlnaHQ/MTowKTsKICAgICAgICBjb25zdCB0eSA9IChrZXlzLkFycm93VXA/MTowKSsoa2V5cy5BcnJvd0Rvd24/LTE6MCk7CiAgICAgICAgdGhpcy5wbGF5ZXIuZ3JvdXAucm90YXRpb24ueiA9IFRIUkVFLk1hdGhVdGlscy5sZXJwKHRoaXMucGxheWVyLmdyb3VwLnJvdGF0aW9uLnosIC10eCowLjMyLCAwLjE0KTsKICAgICAgICB0aGlzLnBsYXllci5ncm91cC5yb3RhdGlvbi54ID0gVEhSRUUuTWF0aFV0aWxzLmxlcnAodGhpcy5wbGF5ZXIuZ3JvdXAucm90YXRpb24ueCwgdHkqMC4xOCwgMC4xNCk7CgogICAgICAgIHRoaXMucGxheWVyLnRocnVzdGVyLnNjYWxlLnkgPSAwLjcgKyBNYXRoLnJhbmRvbSgpKjAuNTU7CiAgICAgICAgdGhpcy5wbGF5ZXIudGhydXN0ZXIubWF0ZXJpYWwuY29sb3Iuc2V0SFNMKDAuNTIgKyBNYXRoLnJhbmRvbSgpKjAuMDUsIDEsIDAuNjUpOwoKICAgICAgICBjb25zdCBub3cgPSBwZXJmb3JtYW5jZS5ub3coKS8xMDAwOwogICAgICAgIGlmICgoa2V5cy5TaGlmdExlZnQgfHwga2V5cy5TaGlmdFJpZ2h0KSAmJiB0aGlzLnNoaWVsZEFjdGl2ZTw9MCAmJiBub3c+PXRoaXMuc2hpZWxkUmVhZHlBdCl7CiAgICAgICAgICB0aGlzLnNoaWVsZEFjdGl2ZSA9IHRoaXMuc2hpZWxkRHVyYXRpb247CiAgICAgICAgICB0aGlzLnNoaWVsZFJlYWR5QXQgPSBub3cgKyB0aGlzLnNoaWVsZENvb2xkb3duOwogICAgICAgIH0KICAgICAgICBpZiAodGhpcy5zaGllbGRBY3RpdmUgPiAwKXsKICAgICAgICAgIHRoaXMuc2hpZWxkQWN0aXZlIC09IGR0OwogICAgICAgICAgdGhpcy5wbGF5ZXIuc2hpZWxkLm1hdGVyaWFsLm9wYWNpdHkgPSAwLjQgKyBNYXRoLnNpbihub3cqMjIpKjAuMTI7CiAgICAgICAgICB0aGlzLnBsYXllci5zaGllbGQucm90YXRpb24ueSArPSBkdCoxLjk7CiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgIHRoaXMucGxheWVyLnNoaWVsZC5tYXRlcmlhbC5vcGFjaXR5ID0gTWF0aC5tYXgoMCwgdGhpcy5wbGF5ZXIuc2hpZWxkLm1hdGVyaWFsLm9wYWNpdHkgLSBkdCozLjUpOwogICAgICAgIH0KCiAgICAgICAgaWYgKGtleXMuU3BhY2UgJiYgbm93IC0gdGhpcy5sYXN0U2hvdCA+IHRoaXMuYnVyc3RDb29sZG93biAmJiB0aGlzLmJ1cnN0TGVmdD09PTApewogICAgICAgICAgdGhpcy5sYXN0U2hvdCA9IG5vdzsKICAgICAgICAgIHRoaXMuYnVyc3RMZWZ0ID0gMzsKICAgICAgICAgIHRoaXMubmV4dEJ1cnN0U2hvdCA9IG5vdzsKICAgICAgICB9CiAgICAgICAgaWYgKHRoaXMuYnVyc3RMZWZ0ID4gMCAmJiBub3cgPj0gdGhpcy5uZXh0QnVyc3RTaG90KXsKICAgICAgICAgIGNvbnN0IGlkeCA9IDMgLSB0aGlzLmJ1cnN0TGVmdDsKICAgICAgICAgIGNvbnN0IG9mZnNldHMgPSBbLTAuMjIsIDAuMjIsIDBdOwogICAgICAgICAgdGhpcy5zcGF3blBsYXllckJ1bGxldChvZmZzZXRzW2lkeF0gfHwgMCk7CiAgICAgICAgICB0aGlzLmJ1cnN0TGVmdC0tOwogICAgICAgICAgdGhpcy5uZXh0QnVyc3RTaG90ID0gbm93ICsgdGhpcy5idXJzdFNwYWNpbmc7CiAgICAgICAgfQoKICAgICAgICB0aGlzLmVuZW15U3Bhd25BY2N1bSArPSBkdDsKICAgICAgICBjb25zdCBzcGF3blJhdGUgPSBNYXRoLm1heCgwLjMyLCAxLjA1IC0gdGhpcy53YXZlKjAuMDQ1KTsKICAgICAgICBpZiAodGhpcy5lbmVteVNwYXduQWNjdW0gPj0gc3Bhd25SYXRlKXsKICAgICAgICAgIHRoaXMuZW5lbXlTcGF3bkFjY3VtID0gMDsKICAgICAgICAgIGNvbnN0IHJvbGwgPSBNYXRoLnJhbmRvbSgpOwogICAgICAgICAgY29uc3QgdHlwZSA9IHJvbGwgPCAwLjU2ID8gInNjb3V0IiA6IChyb2xsIDwgMC44MiA/ICJib21iZXIiIDogInNuaXBlciIpOwogICAgICAgICAgdGhpcy5zcGF3bkVuZW15KHR5cGUpOwogICAgICAgIH0KCiAgICAgICAgZm9yIChsZXQgaT10aGlzLmVuZW1pZXMubGVuZ3RoLTE7aT49MDtpLS0pewogICAgICAgICAgY29uc3QgZSA9IHRoaXMuZW5lbWllc1tpXTsKICAgICAgICAgIGUudCArPSBkdDsKICAgICAgICAgIGlmIChlLnR5cGU9PT0ic2NvdXQiKXsKICAgICAgICAgICAgZS5ncm91cC5wb3NpdGlvbi56ICs9ICgzLjEgKyB0aGlzLndhdmUqMC4xKSpkdDsKICAgICAgICAgICAgZS5ncm91cC5wb3NpdGlvbi54ICs9IE1hdGguc2luKGUudCozLjEpKmR0KjEuNzU7CiAgICAgICAgICAgIGUuZ3JvdXAucG9zaXRpb24ueSArPSBNYXRoLmNvcyhlLnQqMi41KSpkdCowLjk1OwogICAgICAgICAgfSBlbHNlIGlmIChlLnR5cGU9PT0iYm9tYmVyIil7CiAgICAgICAgICAgIGUuZ3JvdXAucG9zaXRpb24ueiArPSAoMS42NSArIHRoaXMud2F2ZSowLjA4KSpkdDsKICAgICAgICAgICAgZS5ncm91cC5wb3NpdGlvbi54ICs9IE1hdGguc2luKGUudCoxLjQ1KSpkdCowLjc7CiAgICAgICAgICB9IGVsc2UgewogICAgICAgICAgICBlLmdyb3VwLnBvc2l0aW9uLnogKz0gKDIuMiArIHRoaXMud2F2ZSowLjA5KSpkdDsKICAgICAgICAgICAgZS5ncm91cC5wb3NpdGlvbi54ICs9IE1hdGguc2luKGUudCoxLjkpKmR0KjEuMDU7CiAgICAgICAgICAgIGUuZ3JvdXAucG9zaXRpb24ueSArPSBNYXRoLnNpbihlLnQqMS4yKSpkdCowLjY7CiAgICAgICAgICB9CgogICAgICAgICAgdGhpcy5lbmVteUF0dGFjayhlLCBkdCk7CgogICAgICAgICAgaWYgKGUuZ3JvdXAucG9zaXRpb24ueiA+IDgpewogICAgICAgICAgICB0aGlzLnNjZW5lLnJlbW92ZShlLmdyb3VwKTsKICAgICAgICAgICAgdGhpcy5lbmVtaWVzLnNwbGljZShpLDEpOwogICAgICAgICAgICBjb250aW51ZTsKICAgICAgICAgIH0KCiAgICAgICAgICBpZiAoZS5ncm91cC5wb3NpdGlvbi5kaXN0YW5jZVRvKHRoaXMucGxheWVyLmdyb3VwLnBvc2l0aW9uKSA8IDAuOSl7CiAgICAgICAgICAgIHRoaXMuaGl0UGxheWVyKDEpOwogICAgICAgICAgICB0aGlzLmV4cGxvZGUoZS5ncm91cC5wb3NpdGlvbiwgMHhmZjk5NjYsIDE0LCA1LjMpOwogICAgICAgICAgICB0aGlzLnNjZW5lLnJlbW92ZShlLmdyb3VwKTsKICAgICAgICAgICAgdGhpcy5lbmVtaWVzLnNwbGljZShpLDEpOwogICAgICAgICAgfQogICAgICAgIH0KCiAgICAgICAgZm9yIChsZXQgaT10aGlzLnBsYXllckJ1bGxldHMubGVuZ3RoLTE7aT49MDtpLS0pewogICAgICAgICAgY29uc3QgYiA9IHRoaXMucGxheWVyQnVsbGV0c1tpXTsKICAgICAgICAgIGIubGlmZSAtPSBkdDsKICAgICAgICAgIGIubWVzaC5wb3NpdGlvbi5hZGRTY2FsZWRWZWN0b3IoYi52ZWwsIGR0KTsKICAgICAgICAgIGlmIChiLmxpZmU8PTAgfHwgYi5tZXNoLnBvc2l0aW9uLnogPCAtOTApewogICAgICAgICAgICB0aGlzLnNjZW5lLnJlbW92ZShiLm1lc2gpOwogICAgICAgICAgICB0aGlzLnBsYXllckJ1bGxldHMuc3BsaWNlKGksMSk7CiAgICAgICAgICAgIGNvbnRpbnVlOwogICAgICAgICAgfQogICAgICAgICAgZm9yIChsZXQgaj10aGlzLmVuZW1pZXMubGVuZ3RoLTE7aj49MDtqLS0pewogICAgICAgICAgICBjb25zdCBlID0gdGhpcy5lbmVtaWVzW2pdOwogICAgICAgICAgICBpZiAoYi5tZXNoLnBvc2l0aW9uLmRpc3RhbmNlVG8oZS5ncm91cC5wb3NpdGlvbikgPCAoZS50eXBlPT09ImJvbWJlciI/MC44NjowLjYyKSl7CiAgICAgICAgICAgICAgZS5ocC0tOwogICAgICAgICAgICAgIHRoaXMuZXhwbG9kZShiLm1lc2gucG9zaXRpb24sIDB4NzdmNGZmLCA2LCAzLjgpOwogICAgICAgICAgICAgIHRoaXMuc2NlbmUucmVtb3ZlKGIubWVzaCk7CiAgICAgICAgICAgICAgdGhpcy5wbGF5ZXJCdWxsZXRzLnNwbGljZShpLDEpOwogICAgICAgICAgICAgIGlmIChlLmhwPD0wKXsKICAgICAgICAgICAgICAgIHRoaXMuc2NvcmUgKz0gZS5zY29yZTsKICAgICAgICAgICAgICAgIHRoaXMuZXhwbG9kZShlLmdyb3VwLnBvc2l0aW9uLCBlLnR5cGU9PT0iYm9tYmVyIj8weGZmYjc1ZTooZS50eXBlPT09InNuaXBlciI/MHhiYTliZmY6MHhmZjdhYWYpLCAxNiwgNi4yKTsKICAgICAgICAgICAgICAgIHRoaXMuc2NlbmUucmVtb3ZlKGUuZ3JvdXApOwogICAgICAgICAgICAgICAgdGhpcy5lbmVtaWVzLnNwbGljZShqLDEpOwogICAgICAgICAgICAgIH0KICAgICAgICAgICAgICBicmVhazsKICAgICAgICAgICAgfQogICAgICAgICAgfQogICAgICAgIH0KCiAgICAgICAgZm9yIChsZXQgaT10aGlzLmVuZW15QnVsbGV0cy5sZW5ndGgtMTtpPj0wO2ktLSl7CiAgICAgICAgICBjb25zdCBiID0gdGhpcy5lbmVteUJ1bGxldHNbaV07CiAgICAgICAgICBiLmxpZmUgLT0gZHQ7CiAgICAgICAgICBiLm1lc2gucG9zaXRpb24uYWRkU2NhbGVkVmVjdG9yKGIudmVsLCBkdCk7CiAgICAgICAgICBpZiAoYi5saWZlPD0wIHx8IE1hdGguYWJzKGIubWVzaC5wb3NpdGlvbi54KT4yNiB8fCBNYXRoLmFicyhiLm1lc2gucG9zaXRpb24ueSk+MjAgfHwgYi5tZXNoLnBvc2l0aW9uLno+MTggfHwgYi5tZXNoLnBvc2l0aW9uLno8LTEzMCl7CiAgICAgICAgICAgIHRoaXMuc2NlbmUucmVtb3ZlKGIubWVzaCk7CiAgICAgICAgICAgIHRoaXMuZW5lbXlCdWxsZXRzLnNwbGljZShpLDEpOwogICAgICAgICAgICBjb250aW51ZTsKICAgICAgICAgIH0KICAgICAgICAgIGlmIChiLm1lc2gucG9zaXRpb24uZGlzdGFuY2VUbyh0aGlzLnBsYXllci5ncm91cC5wb3NpdGlvbikgPCAwLjY2ICsgYi5kYW5nZXIqMC4wNyl7CiAgICAgICAgICAgIHRoaXMuaGl0UGxheWVyKGIuZGFuZ2VyPT09Mj8yOjEpOwogICAgICAgICAgICB0aGlzLmV4cGxvZGUoYi5tZXNoLnBvc2l0aW9uLCAweGZmN2M5NywgMTAsIDQuOCk7CiAgICAgICAgICAgIHRoaXMuc2NlbmUucmVtb3ZlKGIubWVzaCk7CiAgICAgICAgICAgIHRoaXMuZW5lbXlCdWxsZXRzLnNwbGljZShpLDEpOwogICAgICAgICAgfQogICAgICAgIH0KCiAgICAgICAgZm9yIChsZXQgaT10aGlzLnBhcnRpY2xlcy5sZW5ndGgtMTtpPj0wO2ktLSl7CiAgICAgICAgICBjb25zdCBwID0gdGhpcy5wYXJ0aWNsZXNbaV07CiAgICAgICAgICBwLmxpZmUgLT0gZHQ7CiAgICAgICAgICBwLm1lc2gucG9zaXRpb24uYWRkU2NhbGVkVmVjdG9yKHAudmVsLCBkdCk7CiAgICAgICAgICBwLnZlbC5tdWx0aXBseVNjYWxhcigwLjk2KTsKICAgICAgICAgIHAubWVzaC5tYXRlcmlhbC5vcGFjaXR5ID0gTWF0aC5tYXgoMCwgcC5saWZlKjEuNSk7CiAgICAgICAgICBpZiAocC5saWZlPD0wKXsKICAgICAgICAgICAgdGhpcy5zY2VuZS5yZW1vdmUocC5tZXNoKTsKICAgICAgICAgICAgdGhpcy5wYXJ0aWNsZXMuc3BsaWNlKGksMSk7CiAgICAgICAgICB9CiAgICAgICAgfQoKICAgICAgICBpZiAodGhpcy5wbGF5ZXJIaXRGbGFzaD4wKXsKICAgICAgICAgIHRoaXMucGxheWVySGl0Rmxhc2ggLT0gZHQ7CiAgICAgICAgICB0aGlzLnBsYXllci5ncm91cC5jaGlsZHJlbi5mb3JFYWNoKG09PnsKICAgICAgICAgICAgaWYgKG0ubWF0ZXJpYWwgJiYgImVtaXNzaXZlSW50ZW5zaXR5IiBpbiBtLm1hdGVyaWFsKSBtLm1hdGVyaWFsLmVtaXNzaXZlSW50ZW5zaXR5ID0gMi40OwogICAgICAgICAgfSk7CiAgICAgICAgfSBlbHNlIHsKICAgICAgICAgIHRoaXMucGxheWVyLmdyb3VwLmNoaWxkcmVuLmZvckVhY2gobT0+ewogICAgICAgICAgICBpZiAobS5tYXRlcmlhbCAmJiAiZW1pc3NpdmVJbnRlbnNpdHkiIGluIG0ubWF0ZXJpYWwpIG0ubWF0ZXJpYWwuZW1pc3NpdmVJbnRlbnNpdHkgPSBNYXRoLm1heCgwLjY1LCBtLm1hdGVyaWFsLmVtaXNzaXZlSW50ZW5zaXR5KjAuOSk7CiAgICAgICAgICB9KTsKICAgICAgICB9CgogICAgICAgIHRoaXMuY2FtZXJhLnBvc2l0aW9uLnggPSBUSFJFRS5NYXRoVXRpbHMubGVycCh0aGlzLmNhbWVyYS5wb3NpdGlvbi54LCBwLngqMC4zNCwgMC4wNik7CiAgICAgICAgdGhpcy5jYW1lcmEucG9zaXRpb24ueSA9IFRIUkVFLk1hdGhVdGlscy5sZXJwKHRoaXMuY2FtZXJhLnBvc2l0aW9uLnksIDQuNSArIHAueSowLjI1LCAwLjA4KTsKICAgICAgICB0aGlzLmNhbWVyYS5wb3NpdGlvbi56ID0gVEhSRUUuTWF0aFV0aWxzLmxlcnAodGhpcy5jYW1lcmEucG9zaXRpb24ueiwgOS40LCAwLjEyKTsKICAgICAgICB0aGlzLmNhbWVyYS5sb29rQXQocC54KjAuMjUsIHAueSowLjA4LCAtMTMpOwoKICAgICAgICB0aGlzLnN0YXJzLnBvc2l0aW9uLnogKz0gZHQqMi40OwogICAgICAgIGlmICh0aGlzLnN0YXJzLnBvc2l0aW9uLnogPiA2KSB0aGlzLnN0YXJzLnBvc2l0aW9uLnogPSAwOwogICAgICAgIHRoaXMubmVidWxhLm1hdGVyaWFsLnVuaWZvcm1zLnQudmFsdWUgKz0gZHQqMTA7CgogICAgICAgIHRoaXMudXBkYXRlSFVEKCk7CiAgICAgIH0KCiAgICAgIGxvb3AoKXsKICAgICAgICBpZiAoIXRoaXMucnVubmluZyAmJiAhdGhpcy5nYW1lT3ZlcikgcmV0dXJuOwogICAgICAgIGNvbnN0IGR0ID0gTWF0aC5taW4oMC4wMzMsIHRoaXMuY2xvY2suZ2V0RGVsdGEoKSk7CiAgICAgICAgdGhpcy51cGRhdGUoZHQpOwogICAgICAgIHRoaXMucmVuZGVyZXIucmVuZGVyKHRoaXMuc2NlbmUsIHRoaXMuY2FtZXJhKTsKICAgICAgICByZXF1ZXN0QW5pbWF0aW9uRnJhbWUoKCk9PnRoaXMubG9vcCgpKTsKICAgICAgfQoKICAgICAgcmVzaXplKCl7CiAgICAgICAgdGhpcy5jYW1lcmEuYXNwZWN0ID0gaW5uZXJXaWR0aC9pbm5lckhlaWdodDsKICAgICAgICB0aGlzLmNhbWVyYS51cGRhdGVQcm9qZWN0aW9uTWF0cml4KCk7CiAgICAgICAgdGhpcy5yZW5kZXJlci5zZXRTaXplKGlubmVyV2lkdGgsIGlubmVySGVpZ2h0KTsKICAgICAgfQogICAgfQoKICAgIGNsYXNzIEZhbGxiYWNrMkQgewogICAgICBjb25zdHJ1Y3RvcihjYW52YXMpewogICAgICAgIHRoaXMuY2FudmFzID0gY2FudmFzOwogICAgICAgIHRoaXMuY3R4ID0gY2FudmFzLmdldENvbnRleHQoIjJkIik7CiAgICAgICAgdGhpcy5ydW5uaW5nID0gZmFsc2U7CiAgICAgICAgdGhpcy5nYW1lT3ZlciA9IGZhbHNlOwogICAgICAgIHRoaXMuc2NvcmUgPSAwOyB0aGlzLndhdmUgPSAxOyB0aGlzLmxpdmVzID0gMzsKICAgICAgICB0aGlzLncgPSBpbm5lcldpZHRoOyB0aGlzLmggPSBpbm5lckhlaWdodDsKICAgICAgICB0aGlzLnBsYXllciA9IHt4OnRoaXMudyowLjUsIHk6dGhpcy5oKjAuNzgsIHI6MTYsIHNoaWVsZDowLCBzaGllbGRSZWFkeTowfTsKICAgICAgICB0aGlzLnBCdWxsZXRzPVtdOyB0aGlzLmVCdWxsZXRzPVtdOyB0aGlzLmVuZW1pZXM9W107CiAgICAgICAgdGhpcy5sYXN0PTA7IHRoaXMuc3Bhd249MDsgdGhpcy5idXJzdD0wOyB0aGlzLm5leHRCdXJzdD0wOyB0aGlzLmxhc3RCdXJzdD0wOwogICAgICAgIHRoaXMuc2hpZWxkQ2Q9Ni41OyB0aGlzLnNoaWVsZER1cj0xLjU7IHRoaXMud2F2ZVRpbWVyPTA7CiAgICAgICAgdGhpcy5zdGFycyA9IEFycmF5LmZyb20oe2xlbmd0aDoxNjB9LCgpPT4oe3g6TWF0aC5yYW5kb20oKSp0aGlzLncseTpNYXRoLnJhbmRvbSgpKnRoaXMuaCxzOk1hdGgucmFuZG9tKCkqMiswLjZ9KSk7CiAgICAgICAgYWRkRXZlbnRMaXN0ZW5lcigicmVzaXplIiwoKT0+dGhpcy5yZXNpemUoKSk7CiAgICAgIH0KICAgICAgcmVzZXQoKXsKICAgICAgICB0aGlzLnNjb3JlPTA7dGhpcy53YXZlPTE7dGhpcy5saXZlcz0zO3RoaXMud2F2ZVRpbWVyPTA7CiAgICAgICAgdGhpcy5wbGF5ZXIueD10aGlzLncqMC41O3RoaXMucGxheWVyLnk9dGhpcy5oKjAuNzg7dGhpcy5wbGF5ZXIuc2hpZWxkPTA7dGhpcy5wbGF5ZXIuc2hpZWxkUmVhZHk9MDsKICAgICAgICB0aGlzLnBCdWxsZXRzLmxlbmd0aD0wO3RoaXMuZUJ1bGxldHMubGVuZ3RoPTA7dGhpcy5lbmVtaWVzLmxlbmd0aD0wOwogICAgICAgIHRoaXMuZ2FtZU92ZXI9ZmFsc2U7IHRoaXMubGFzdEJ1cnN0PTA7IHRoaXMuYnVyc3Q9MDsKICAgICAgfQogICAgICByZXNpemUoKXsgdGhpcy53PWlubmVyV2lkdGg7IHRoaXMuaD1pbm5lckhlaWdodDsgdGhpcy5jYW52YXMud2lkdGg9dGhpcy53OyB0aGlzLmNhbnZhcy5oZWlnaHQ9dGhpcy5oOyB9CiAgICAgIHN0YXJ0KCl7IHRoaXMucnVubmluZz10cnVlOyB0aGlzLmxhc3Q9cGVyZm9ybWFuY2Uubm93KCk7IHRoaXMucmVzaXplKCk7IHRoaXMubG9vcCgpOyB9CiAgICAgIHNwYXduRW5lbXkoKXsKICAgICAgICBjb25zdCB0PU1hdGgucmFuZG9tKCk8MC41Nj8ic2NvdXQiOihNYXRoLnJhbmRvbSgpPDAuNj8ic25pcGVyIjoiYm9tYmVyIik7CiAgICAgICAgY29uc3QgaHA9dD09PSJib21iZXIiPzM6dD09PSJzbmlwZXIiPzI6MTsKICAgICAgICB0aGlzLmVuZW1pZXMucHVzaCh7dCxocCx4Ok1hdGgucmFuZG9tKCkqdGhpcy53LHk6LTIwLHY6IHQ9PT0iYm9tYmVyIj8xLjI6dD09PSJzbmlwZXIiPzEuNzoyLjQsYXRrOk1hdGgucmFuZG9tKCkqMS41KzAuNyxwaGFzZTpNYXRoLnJhbmRvbSgpKjZ9KTsKICAgICAgfQogICAgICBsb29wKCl7CiAgICAgICAgaWYoIXRoaXMucnVubmluZyYmICF0aGlzLmdhbWVPdmVyKSByZXR1cm47CiAgICAgICAgY29uc3Qgbm93PXBlcmZvcm1hbmNlLm5vdygpLCBkdD1NYXRoLm1pbigzMywgbm93LXRoaXMubGFzdCkvMTAwMDsgdGhpcy5sYXN0PW5vdzsKICAgICAgICBjb25zdCBjPXRoaXMuY3R4OwogICAgICAgIGMuY2xlYXJSZWN0KDAsMCx0aGlzLncsdGhpcy5oKTsKICAgICAgICBjLmZpbGxTdHlsZT0iIzA3MGIxOCI7IGMuZmlsbFJlY3QoMCwwLHRoaXMudyx0aGlzLmgpOwogICAgICAgIGZvcihjb25zdCBzIG9mIHRoaXMuc3RhcnMpeyBzLnkgKz0gcy5zKmR0KjQwOyBpZihzLnk+dGhpcy5oKXtzLnk9MDtzLng9TWF0aC5yYW5kb20oKSp0aGlzLnc7fSBjLmZpbGxTdHlsZT0icmdiYSgxNzAsMjIwLDI1NSwuOCkiOyBjLmZpbGxSZWN0KHMueCxzLnkscy5zLHMucyk7fQogICAgICAgIGlmKGtleXMuQXJyb3dMZWZ0KSB0aGlzLnBsYXllci54LT0zNjAqZHQ7CiAgICAgICAgaWYoa2V5cy5BcnJvd1JpZ2h0KSB0aGlzLnBsYXllci54Kz0zNjAqZHQ7CiAgICAgICAgaWYoa2V5cy5BcnJvd1VwKSB0aGlzLnBsYXllci55LT0zMDAqZHQ7CiAgICAgICAgaWYoa2V5cy5BcnJvd0Rvd24pIHRoaXMucGxheWVyLnkrPTMwMCpkdDsKICAgICAgICB0aGlzLnBsYXllci54PU1hdGgubWF4KDI1LE1hdGgubWluKHRoaXMudy0yNSx0aGlzLnBsYXllci54KSk7CiAgICAgICAgdGhpcy5wbGF5ZXIueT1NYXRoLm1heCgzNSxNYXRoLm1pbih0aGlzLmgtMjUsdGhpcy5wbGF5ZXIueSkpOwogICAgICAgIHRoaXMud2F2ZVRpbWVyKz1kdDsgaWYodGhpcy53YXZlVGltZXI+MjIpe3RoaXMud2F2ZSsrO3RoaXMud2F2ZVRpbWVyPTA7fQogICAgICAgIGlmKChrZXlzLlNoaWZ0TGVmdHx8a2V5cy5TaGlmdFJpZ2h0KSYmdGhpcy5wbGF5ZXIuc2hpZWxkPD0wJiZub3cvMTAwMD49dGhpcy5wbGF5ZXIuc2hpZWxkUmVhZHkpe3RoaXMucGxheWVyLnNoaWVsZD10aGlzLnNoaWVsZER1cjt0aGlzLnBsYXllci5zaGllbGRSZWFkeT1ub3cvMTAwMCt0aGlzLnNoaWVsZENkO30KICAgICAgICBpZih0aGlzLnBsYXllci5zaGllbGQ+MCl0aGlzLnBsYXllci5zaGllbGQtPWR0OwogICAgICAgIGlmKGtleXMuU3BhY2UgJiYgbm93LzEwMDAtdGhpcy5sYXN0QnVyc3Q+MC4yNiAmJiB0aGlzLmJ1cnN0PT09MCl7dGhpcy5sYXN0QnVyc3Q9bm93LzEwMDA7dGhpcy5idXJzdD0zO3RoaXMubmV4dEJ1cnN0PW5vdy8xMDAwO30KICAgICAgICBpZih0aGlzLmJ1cnN0PjAgJiYgbm93LzEwMDA+PXRoaXMubmV4dEJ1cnN0KXt0aGlzLnBCdWxsZXRzLnB1c2goe3g6dGhpcy5wbGF5ZXIueCsodGhpcy5idXJzdD09PTM/LTEwOnRoaXMuYnVyc3Q9PT0yPzEwOjApLHk6dGhpcy5wbGF5ZXIueS0xOCx2OjYyMH0pO3RoaXMuYnVyc3QtLTt0aGlzLm5leHRCdXJzdD1ub3cvMTAwMCswLjA3O30KICAgICAgICB0aGlzLnNwYXduKz1kdDsgaWYodGhpcy5zcGF3bj5NYXRoLm1heCgwLjM1LDEuMDItdGhpcy53YXZlKjAuMDQpKXt0aGlzLnNwYXduPTA7dGhpcy5zcGF3bkVuZW15KCk7fQogICAgICAgIGZvcihsZXQgaT10aGlzLmVuZW1pZXMubGVuZ3RoLTE7aT49MDtpLS0pewogICAgICAgICAgY29uc3QgZT10aGlzLmVuZW1pZXNbaV07IGUueSs9ZS52KigxK3RoaXMud2F2ZSowLjA3KTsKICAgICAgICAgIGUueCs9TWF0aC5zaW4obm93LzQyMCtlLnBoYXNlKSooZS50PT09ImJvbWJlciI/MC44OjEuOSk7CiAgICAgICAgICBlLmF0ay09ZHQ7IGlmKGUuYXRrPD0wKXtlLmF0az0oZS50PT09InNuaXBlciI/Mi42OmUudD09PSJib21iZXIiPzEuODoxLjEpO3RoaXMuZUJ1bGxldHMucHVzaCh7eDplLngseTplLnksdng6KHRoaXMucGxheWVyLngtZS54KS8xMjAsdnk6IGUudD09PSJzbmlwZXIiPzYuODo0LjgscjplLnQ9PT0iYm9tYmVyIj82OjQsZDplLnQ9PT0ic25pcGVyIj8yOjF9KTt9CiAgICAgICAgICBpZihlLnk+dGhpcy5oKzI4KXt0aGlzLmVuZW1pZXMuc3BsaWNlKGksMSk7fQogICAgICAgIH0KICAgICAgICBmb3IobGV0IGk9dGhpcy5wQnVsbGV0cy5sZW5ndGgtMTtpPj0wO2ktLSl7Y29uc3QgYj10aGlzLnBCdWxsZXRzW2ldO2IueS09Yi52KmR0O2lmKGIueTwwKXRoaXMucEJ1bGxldHMuc3BsaWNlKGksMSk7fQogICAgICAgIGZvcihsZXQgaT10aGlzLmVCdWxsZXRzLmxlbmd0aC0xO2k+PTA7aS0tKXtjb25zdCBiPXRoaXMuZUJ1bGxldHNbaV07Yi54Kz1iLnZ4KjYwKmR0O2IueSs9Yi52eSo2MCpkdDtpZihiLnk+dGhpcy5oKzIwfHxiLng8MHx8Yi54PnRoaXMudyl0aGlzLmVCdWxsZXRzLnNwbGljZShpLDEpO30KICAgICAgICBmb3IobGV0IGk9dGhpcy5wQnVsbGV0cy5sZW5ndGgtMTtpPj0wO2ktLSl7CiAgICAgICAgICBjb25zdCBiPXRoaXMucEJ1bGxldHNbaV07CiAgICAgICAgICBmb3IobGV0IGo9dGhpcy5lbmVtaWVzLmxlbmd0aC0xO2o+PTA7ai0tKXsKICAgICAgICAgICAgY29uc3QgZT10aGlzLmVuZW1pZXNbal07IGNvbnN0IGR4PWIueC1lLngsZHk9Yi55LWUueTsKICAgICAgICAgICAgaWYoZHgqZHgrZHkqZHkgPCAoZS50PT09ImJvbWJlciI/MjI6MTYpKioyKXtlLmhwLS07dGhpcy5wQnVsbGV0cy5zcGxpY2UoaSwxKTtpZihlLmhwPD0wKXt0aGlzLnNjb3JlICs9IGUudD09PSJib21iZXIiPzE4MDplLnQ9PT0ic25pcGVyIj8yMjA6ODA7IHRoaXMuZW5lbWllcy5zcGxpY2UoaiwxKTt9YnJlYWs7fQogICAgICAgICAgfQogICAgICAgIH0KICAgICAgICBmb3IobGV0IGk9dGhpcy5lQnVsbGV0cy5sZW5ndGgtMTtpPj0wO2ktLSl7CiAgICAgICAgICBjb25zdCBiPXRoaXMuZUJ1bGxldHNbaV0sZHg9Yi54LXRoaXMucGxheWVyLngsZHk9Yi55LXRoaXMucGxheWVyLnk7CiAgICAgICAgICBpZihkeCpkeCtkeSpkeSA8ICgxOCtiLnIpKigxOCtiLnIpKXsgaWYodGhpcy5wbGF5ZXIuc2hpZWxkPD0wKXRoaXMubGl2ZXMtPWIuZDsgdGhpcy5lQnVsbGV0cy5zcGxpY2UoaSwxKTsgaWYodGhpcy5saXZlczw9MCl7dGhpcy5saXZlcz0wO3RoaXMucnVubmluZz1mYWxzZTt0aGlzLmdhbWVPdmVyPXRydWU7IHVpLmZpbmFsU3RhdHMudGV4dENvbnRlbnQ9YEZpbmFsIFNjb3JlOiAke3RoaXMuc2NvcmV9IMK3IFdhdmUgUmVhY2hlZDogJHt0aGlzLndhdmV9YDsgdWkuZ2FtZU92ZXJPdmVybGF5LnN0eWxlLmRpc3BsYXk9ImZsZXgiO319CiAgICAgICAgfQogICAgICAgIGMuc2F2ZSgpOyBjLnRyYW5zbGF0ZSh0aGlzLnBsYXllci54LHRoaXMucGxheWVyLnkpOyBjLmZpbGxTdHlsZT0iIzhmYzRmZiI7IGMuYmVnaW5QYXRoKCk7IGMubW92ZVRvKDAsLTE4KTsgYy5saW5lVG8oMTIsMTUpOyBjLmxpbmVUbygtMTIsMTUpOyBjLmNsb3NlUGF0aCgpOyBjLmZpbGwoKTsgYy5yZXN0b3JlKCk7CiAgICAgICAgaWYodGhpcy5wbGF5ZXIuc2hpZWxkPjApe2Muc3Ryb2tlU3R5bGU9InJnYmEoMTIwLDIyMCwyNTUsLjgpIjtjLmxpbmVXaWR0aD0yO2MuYmVnaW5QYXRoKCk7Yy5hcmModGhpcy5wbGF5ZXIueCx0aGlzLnBsYXllci55LDI0LDAsTWF0aC5QSSoyKTtjLnN0cm9rZSgpO30KICAgICAgICBjLmZpbGxTdHlsZT0iIzc0ZWVmZiI7IGZvcihjb25zdCBiIG9mIHRoaXMucEJ1bGxldHMpe2MuZmlsbFJlY3QoYi54LTIsYi55LTEwLDQsMTIpO30KICAgICAgICBmb3IoY29uc3QgYiBvZiB0aGlzLmVCdWxsZXRzKXtjLmZpbGxTdHlsZT1iLmQ9PT0yPyIjYzM5YmZmIjoiI2ZmNzM5NCI7Yy5iZWdpblBhdGgoKTtjLmFyYyhiLngsYi55LGIuciwwLE1hdGguUEkqMik7Yy5maWxsKCk7fQogICAgICAgIGZvcihjb25zdCBlIG9mIHRoaXMuZW5lbWllcyl7Yy5maWxsU3R5bGU9ZS50PT09ImJvbWJlciI/IiNmZmI3NWUiOmUudD09PSJzbmlwZXIiPyIjYjQ5NWZmIjoiI2ZmN2JhNiI7Yy5iZWdpblBhdGgoKTtjLmFyYyhlLngsZS55LGUudD09PSJib21iZXIiPzE0OjExLDAsTWF0aC5QSSoyKTtjLmZpbGwoKTt9CiAgICAgICAgdWkuc2NvcmUudGV4dENvbnRlbnQ9dGhpcy5zY29yZTsgdWkud2F2ZS50ZXh0Q29udGVudD10aGlzLndhdmU7IHVpLmxpdmVzLnRleHRDb250ZW50PXRoaXMubGl2ZXM7CiAgICAgICAgY29uc3QgcmVtYWluPU1hdGgubWF4KDAsdGhpcy5wbGF5ZXIuc2hpZWxkUmVhZHktbm93LzEwMDApOyBpZih0aGlzLnBsYXllci5zaGllbGQ+MCl7dWkuc2hpZWxkVGV4dC50ZXh0Q29udGVudD0iQUNUSVZFIjt1aS5zaGllbGRGaWxsLnN0eWxlLndpZHRoPWAkeyh0aGlzLnBsYXllci5zaGllbGQvdGhpcy5zaGllbGREdXIpKjEwMH0lYDt1aS5zaGllbGRGaWxsLnN0eWxlLmJhY2tncm91bmQ9ImxpbmVhci1ncmFkaWVudCg5MGRlZywjNThmMGZmLCM3ZDhkZmYpIjt9IGVsc2UgaWYocmVtYWluPD0wKXt1aS5zaGllbGRUZXh0LnRleHRDb250ZW50PSJSZWFkeSI7dWkuc2hpZWxkRmlsbC5zdHlsZS53aWR0aD0iMTAwJSI7dWkuc2hpZWxkRmlsbC5zdHlsZS5iYWNrZ3JvdW5kPSJsaW5lYXItZ3JhZGllbnQoOTBkZWcsIzUzZmY5ZSwjNGViOGZmKSI7fSBlbHNlIHt1aS5zaGllbGRUZXh0LnRleHRDb250ZW50PWAke3JlbWFpbi50b0ZpeGVkKDEpfXNgO3VpLnNoaWVsZEZpbGwuc3R5bGUud2lkdGg9YCR7KDEtcmVtYWluL3RoaXMuc2hpZWxkQ2QpKjEwMH0lYDt1aS5zaGllbGRGaWxsLnN0eWxlLmJhY2tncm91bmQ9ImxpbmVhci1ncmFkaWVudCg5MGRlZywjZmY4ZjcwLCNmZmMyN2EpIjt9CiAgICAgICAgcmVxdWVzdEFuaW1hdGlvbkZyYW1lKCgpPT50aGlzLmxvb3AoKSk7CiAgICAgIH0KICAgIH0KCiAgICBsZXQgZ2FtZSA9IG51bGw7CgogICAgYXN5bmMgZnVuY3Rpb24gaW5pdCgpewogICAgICB0cnkgewogICAgICAgIFRIUkVFID0gYXdhaXQgaW1wb3J0KCJ0aHJlZSIpOyAgIC8vIG9mZmxpbmUgLT4gd2lyZnQgLT4gRmFsbGJhY2sKICAgICAgICBnYW1lID0gbmV3IEdhbWUzRChnYW1lQ2FudmFzKTsKICAgICAgfSBjYXRjaChlcnIpewogICAgICAgIHVzZUZhbGxiYWNrID0gdHJ1ZTsKICAgICAgfQogICAgICBpZiAodXNlRmFsbGJhY2spewogICAgICAgIGdhbWVDYW52YXMuc3R5bGUuZGlzcGxheSA9ICJub25lIjsKICAgICAgICBmYWxsYmFja0NhbnZhcy5zdHlsZS5kaXNwbGF5ID0gImJsb2NrIjsKICAgICAgICBmYWxsYmFja0luZm8uc3R5bGUuZGlzcGxheSA9ICJibG9jayI7CiAgICAgICAgZ2FtZSA9IG5ldyBGYWxsYmFjazJEKGZhbGxiYWNrQ2FudmFzKTsKICAgICAgfQogICAgfQoKICAgIHVpLnN0YXJ0QnRuLm9uY2xpY2sgPSAoKT0+ewogICAgICB1aS5zdGFydE92ZXJsYXkuc3R5bGUuZGlzcGxheSA9ICJub25lIjsKICAgICAgdWkuZ2FtZU92ZXJPdmVybGF5LnN0eWxlLmRpc3BsYXkgPSAibm9uZSI7CiAgICAgIGdhbWUucmVzZXQoKTsKICAgICAgZ2FtZS5zdGFydCgpOwogICAgfTsKICAgIHVpLnJlc3RhcnRCdG4ub25jbGljayA9ICgpPT57CiAgICAgIHVpLmdhbWVPdmVyT3ZlcmxheS5zdHlsZS5kaXNwbGF5ID0gIm5vbmUiOwogICAgICBnYW1lLnJlc2V0KCk7CiAgICAgIGdhbWUuc3RhcnQoKTsKICAgIH07CgogICAgaW5pdCgpOwogIDwvc2NyaXB0Pgo8L2JvZHk+CjwvaHRtbD4=";
+const SERVER_B64="LyogPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09CiAgIEdyYWRlLUNoZWNrIFZhdWx0IOKAkyBsb2thbGVyLCBrb3N0ZW5sb3NlciBTZXJ2ZXIKICAgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tCiAgIFNwZWljaGVydCBkZWluZSBTYW1tbHVuZyBsb2thbCBpbiBlaW5lciBEYXRlaSAodmF1bHQtZGF0YS5qc29uKQogICBVTkQgaMOkbHQgQVBJLUtleXMgc2ljaGVyIHNlcnZlcnNlaXRpZyAoS2V5LVRyZXNvciArIFByb3h5KS4KICAgS0VJTkUgZXh0ZXJuZW4gUGFrZXRlIG7DtnRpZyDigJMgbnVyIE5vZGUuanMgKFZlcnNpb24gMTgrIHdlZ2VuIGZldGNoKS4KCiAgIFNUQVJURU46CiAgICAgMSkgTm9kZS5qcyAxOCsgaW5zdGFsbGllcmVuIChQQzogbm9kZWpzLm9yZyDCtyBBbmRyb2lkOiBUZXJtdXgg4oaSICJwa2cgaW5zdGFsbCBub2RlanMiKQogICAgIDIpIERpZXNlIERhdGVpIGluIGVpbmVuIE9yZG5lciBsZWdlbgogICAgIDMpIEtleXMgYWxzIFVtZ2VidW5nc3ZhcmlhYmxlbiBzZXR6ZW4gKEJlaXNwaWVsLCBlaW4gRWludHJhZyBQUk8gRGllbnN0KToKICAgICAgICAgICAgUEMgKFBvd2VyU2hlbGwpOiAgJGVudjpQT0tFTU9OX0tFWT0iZGVpbl9rZXkiOyBub2RlIHNlcnZlci5qcwogICAgICAgICAgICBQQyAoQmFzaCk6ICAgICAgICBQT0tFTU9OX0tFWT0iZGVpbl9rZXkiIG5vZGUgc2VydmVyLmpzCiAgICAgICAgICAgIFRlcm11eDogICAgICAgICAgIGV4cG9ydCBQT0tFTU9OX0tFWT0iZGVpbl9rZXkiIDsgbm9kZSBzZXJ2ZXIuanMKICAgICAgICAtPiBLZXlzIHN0ZWhlbiBOSUUgaW0gQ29kZSB1bmQgTklFIGltIEJyb3dzZXItSFRNTC4KICAgICA0KSBJbiBkZXIgQXBwIHVudGVyIOKAnkxva2FsZXIgU2VydmVyLVN5bmMiIGRpZSBBZHJlc3NlIGVpbnRyYWdlbjoKICAgICAgICAgICAgaHR0cDovL2xvY2FsaG9zdDo4Nzg3ICAgICAgKGdsZWljaGVzIEdlcsOkdCkKICAgICAgICBvZGVyIGh0dHA6Ly9ERUlORS1JUDo4Nzg3ICAgICAgKGFuZGVyZXMgR2Vyw6R0IGltIHNlbGJlbiBXTEFOKQoKICAgQVBJLVBST1hZIChLZXkgYmxlaWJ0IHNlcnZlcnNlaXRpZyk6CiAgICAgICAgICAgIEdFVCBodHRwOi8vbG9jYWxob3N0Ojg3ODcvYXBpL3Byb3h5LzxkaWVuc3Q+LzxwZmFkPj88cXVlcnk+CiAgICAgICAgei5CLiAvYXBpL3Byb3h5L3Bva2Vtb24vY2FyZHM/cT1uYW1lOiJHbHVyYWsiCiAgICAgICAgICAgICAvYXBpL3Byb3h5L3lnby9jYXJkaW5mby5waHA/Zm5hbWU9RGFyayUyME1hZ2ljaWFuCgogICBBRE1JTi3DnGJlcnNpY2h0IChhbGxlIE51dHplcik6CiAgICAgICAgICAgIEdFVCBodHRwOi8vbG9jYWxob3N0Ojg3ODcvYXBpL2FkbWluL292ZXJ2aWV3CiAgICAgICAgICAgIEhlYWRlcjogeC1hZG1pbi1jb2RlOiBGR1dMNDcKPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09ICovCgpjb25zdCBodHRwID0gcmVxdWlyZSgnaHR0cCcpOwpjb25zdCBmcyAgID0gcmVxdWlyZSgnZnMnKTsKY29uc3QgcGF0aCA9IHJlcXVpcmUoJ3BhdGgnKTsKCmNvbnN0IFBPUlQgICAgICAgPSBwcm9jZXNzLmVudi5QT1JUIHx8IDg3ODc7CmNvbnN0IEFETUlOX0NPREUgPSBwcm9jZXNzLmVudi5BRE1JTl9DT0RFIHx8ICdGR1dMNDcnOwpjb25zdCBEQl9GSUxFICAgID0gcGF0aC5qb2luKF9fZGlybmFtZSwgJ3ZhdWx0LWRhdGEuanNvbicpOwoKLyogPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09CiAgIEtFWS1UUkVTT1IgKyBESUVOU1QtV0hJVEVMSVNUCiAgIEVpbiBFaW50cmFnIHBybyBEaWVuc3QuIEtleSBrb21tdCBhdXMgcHJvY2Vzcy5lbnZbPGVudj5dLgogICBOZXVlbiBEaWVuc3QgZXJnw6RuemVuID0gZWluZSBaZWlsZTogYmFzZSArIGVudi1OYW1lICsgYXV0aCgpLgogICBEZXIgUHJveHkga2FubiBOVVIgZGllc2UgYmFzZS1VUkxzIGVycmVpY2hlbiAoa2VpbiBvZmZlbmVzIFJlbGF5KS4KPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09ICovCmNvbnN0IFNFUlZJQ0VTID0gewogIHBva2Vtb246IHsKICAgIGJhc2U6ICdodHRwczovL2FwaS5wb2tlbW9udGNnLmlvL3YyLycsCiAgICBlbnY6ICAnUE9LRU1PTl9LRVknLAogICAgYXV0aDogKGhlYWRlcnMsIHRhcmdldCwga2V5KSA9PiB7IGlmIChrZXkpIGhlYWRlcnNbJ1gtQXBpLUtleSddID0ga2V5OyB9CiAgfSwKICB5Z286IHsKICAgIGJhc2U6ICdodHRwczovL2RiLnlnb3Byb2RlY2suY29tL2FwaS92Ny8nLAogICAgZW52OiAgbnVsbCwgICAgICAgICAgICAgICAgICAgICAgIC8vIGRpZXNlciBEaWVuc3QgYnJhdWNodCBrZWluZW4gS2V5CiAgICBhdXRoOiAoKSA9PiB7fQogIH0sCiAgdGNnZGV4OiB7CiAgICBiYXNlOiAnaHR0cHM6Ly9hcGkudGNnZGV4Lm5ldC92Mi8nLAogICAgZW52OiAgbnVsbCwgICAgICAgICAgICAgICAgICAgICAgIC8vIFBva8OpbW9uLU5hbWVuL0JpbGRlciAoREUpLCBrZWluIEtleQogICAgYXV0aDogKCkgPT4ge30KICB9CiAgLy8gV2VpdGVyZW4gRGllbnN0IGhpbnp1ZsO8Z2VuLCB6LkIuIG1pdCBLZXkgaW4gZGVyIFF1ZXJ5OgogIC8vIG1hcmt0OiB7CiAgLy8gICBiYXNlOiAnaHR0cHM6Ly9hcGkuYmVpc3BpZWxtYXJrdC5jb20vJywKICAvLyAgIGVudjogICdNQVJLVF9LRVknLAogIC8vICAgYXV0aDogKGhlYWRlcnMsIHRhcmdldCwga2V5KSA9PiB7IGlmIChrZXkpIHRhcmdldC5zZWFyY2hQYXJhbXMuc2V0KCdhcGlrZXknLCBrZXkpOyB9CiAgLy8gfQp9OwpmdW5jdGlvbiBzZXJ2aWNlS2V5KHN2Yyl7IHJldHVybiBzdmMuZW52ID8gKHByb2Nlc3MuZW52W3N2Yy5lbnZdIHx8ICcnKSA6ICcnOyB9CgovLyAtLS0tIGVpbmZhY2hlIERhdGVpLURhdGVuYmFuayAtLS0tCmZ1bmN0aW9uIHJlYWREQigpewogIHRyeSB7IHJldHVybiBKU09OLnBhcnNlKGZzLnJlYWRGaWxlU3luYyhEQl9GSUxFLCAndXRmOCcpKTsgfQogIGNhdGNoIChlKXsgcmV0dXJuIHsgdXNlcnM6IHt9IH07IH0KfQpmdW5jdGlvbiB3cml0ZURCKGRiKXsKICB0cnkgeyBmcy53cml0ZUZpbGVTeW5jKERCX0ZJTEUsIEpTT04uc3RyaW5naWZ5KGRiLCBudWxsLCAyKSk7IHJldHVybiB0cnVlOyB9CiAgY2F0Y2ggKGUpeyBjb25zb2xlLmVycm9yKCdTY2hyZWliZmVobGVyOicsIGUubWVzc2FnZSk7IHJldHVybiBmYWxzZTsgfQp9CgovLyAtLS0tIEhpbGZlbiAtLS0tCmZ1bmN0aW9uIGNvcnMocmVzKXsKICByZXMuc2V0SGVhZGVyKCdBY2Nlc3MtQ29udHJvbC1BbGxvdy1PcmlnaW4nLCAnKicpOwogIHJlcy5zZXRIZWFkZXIoJ0FjY2Vzcy1Db250cm9sLUFsbG93LU1ldGhvZHMnLCAnR0VULFBVVCxQT1NULE9QVElPTlMnKTsKICByZXMuc2V0SGVhZGVyKCdBY2Nlc3MtQ29udHJvbC1BbGxvdy1IZWFkZXJzJywgJ0NvbnRlbnQtVHlwZSwgeC1hZG1pbi1jb2RlJyk7Cn0KZnVuY3Rpb24ganNvbihyZXMsIGNvZGUsIG9iail7CiAgY29ycyhyZXMpOwogIHJlcy53cml0ZUhlYWQoY29kZSwgeyAnQ29udGVudC1UeXBlJzogJ2FwcGxpY2F0aW9uL2pzb24nIH0pOwogIHJlcy5lbmQoSlNPTi5zdHJpbmdpZnkob2JqKSk7Cn0KZnVuY3Rpb24gcmVhZEJvZHkocmVxKXsKICByZXR1cm4gbmV3IFByb21pc2UoKHJlc29sdmUpID0+IHsKICAgIGxldCBkYXRhID0gJyc7CiAgICByZXEub24oJ2RhdGEnLCBjID0+IHsgZGF0YSArPSBjOyBpZiAoZGF0YS5sZW5ndGggPiAxMmU2KSByZXEuZGVzdHJveSgpOyB9KTsgLy8gfjEyIE1CIExpbWl0CiAgICByZXEub24oJ2VuZCcsICgpID0+IHsgdHJ5IHsgcmVzb2x2ZShKU09OLnBhcnNlKGRhdGEgfHwgJ3t9JykpOyB9IGNhdGNoIChlKXsgcmVzb2x2ZShudWxsKTsgfSB9KTsKICB9KTsKfQoKY29uc3Qgc2VydmVyID0gaHR0cC5jcmVhdGVTZXJ2ZXIoYXN5bmMgKHJlcSwgcmVzKSA9PiB7CiAgY29uc3QgdXJsID0gbmV3IFVSTChyZXEudXJsLCBgaHR0cDovLyR7cmVxLmhlYWRlcnMuaG9zdH1gKTsKICBjb25zdCBwYXJ0cyA9IHVybC5wYXRobmFtZS5zcGxpdCgnLycpLmZpbHRlcihCb29sZWFuKTsgLy8gei5CLiBbJ2FwaScsJ2RhdGEnLCdndWVzdCddCgogIGlmIChyZXEubWV0aG9kID09PSAnT1BUSU9OUycpeyBjb3JzKHJlcyk7IHJlcy53cml0ZUhlYWQoMjA0KTsgcmV0dXJuIHJlcy5lbmQoKTsgfQoKICAvLyBHRVQgL2FwaS9oZWFsdGgKICBpZiAocmVxLm1ldGhvZCA9PT0gJ0dFVCcgJiYgdXJsLnBhdGhuYW1lID09PSAnL2FwaS9oZWFsdGgnKXsKICAgIGNvbnN0IGtleXMgPSB7fTsKICAgIE9iamVjdC5lbnRyaWVzKFNFUlZJQ0VTKS5mb3JFYWNoKChbbiwgc10pID0+IHsga2V5c1tuXSA9IHMuZW52ID8gISFwcm9jZXNzLmVudltzLmVudl0gOiAna2VpbiBLZXkgbsO2dGlnJzsgfSk7CiAgICByZXR1cm4ganNvbihyZXMsIDIwMCwgeyBvazogdHJ1ZSwgYXBwOiAnZ3JhZGUtY2hlY2stdmF1bHQnLCB0aW1lOiBEYXRlLm5vdygpLCBrZXlzIH0pOwogIH0KCiAgLy8gR0VUIC9hcGkvcHJveHkvOnNlcnZpY2UvPHBmYWQ+ICAgLT4gVXBzdHJlYW0tQXVmcnVmIG1pdCBzZXJ2ZXJzZWl0aWdlbSBLZXkKICBpZiAocmVxLm1ldGhvZCA9PT0gJ0dFVCcgJiYgcGFydHNbMF0gPT09ICdhcGknICYmIHBhcnRzWzFdID09PSAncHJveHknICYmIHBhcnRzWzJdKXsKICAgIGlmICh0eXBlb2YgZmV0Y2ggPT09ICd1bmRlZmluZWQnKSByZXR1cm4ganNvbihyZXMsIDUwMCwgeyBlcnJvcjogJ05vZGUgMTgrIGJlbsO2dGlndCAoZ2xvYmFsZXMgZmV0Y2ggZmVobHQpJyB9KTsKICAgIGNvbnN0IHN2YyA9IFNFUlZJQ0VTW3BhcnRzWzJdXTsKICAgIGlmICghc3ZjKSByZXR1cm4ganNvbihyZXMsIDQwNCwgeyBlcnJvcjogJ1VuYmVrYW5udGVyIERpZW5zdDogJyArIHBhcnRzWzJdIH0pOwoKICAgIGNvbnN0IHJlc3QgPSBwYXJ0cy5zbGljZSgzKTsKICAgIGlmIChyZXN0LnNvbWUocyA9PiBzID09PSAnLi4nIHx8IHMuaW5jbHVkZXMoJ1xcJykpKSByZXR1cm4ganNvbihyZXMsIDQwMCwgeyBlcnJvcjogJ1VuZ8O8bHRpZ2VyIFBmYWQnIH0pOwoKICAgIGxldCB0YXJnZXQ7CiAgICB0cnkgeyB0YXJnZXQgPSBuZXcgVVJMKHJlc3QubWFwKGVuY29kZVVSSUNvbXBvbmVudCkuam9pbignLycpICsgdXJsLnNlYXJjaCwgc3ZjLmJhc2UpOyB9CiAgICBjYXRjaCAoZSl7IHJldHVybiBqc29uKHJlcywgNDAwLCB7IGVycm9yOiAnVW5nw7xsdGlnZSBaaWVsLVVSTCcgfSk7IH0KICAgIC8vIFNpY2hlcmhlaXQ6IFppZWwgbXVzcyBleGFrdCBpbSBEaWVuc3QtSG9zdCBibGVpYmVuIChrZWluIFNTUkYvUmVsYXkpCiAgICBpZiAodGFyZ2V0Lm9yaWdpbiAhPT0gbmV3IFVSTChzdmMuYmFzZSkub3JpZ2luKSByZXR1cm4ganNvbihyZXMsIDQwMCwgeyBlcnJvcjogJ1ppZWwgYXXDn2VyaGFsYiBkZXMgRGllbnN0ZXMnIH0pOwoKICAgIGNvbnN0IGhlYWRlcnMgPSB7ICdBY2NlcHQnOiAnYXBwbGljYXRpb24vanNvbicgfTsKICAgIHN2Yy5hdXRoKGhlYWRlcnMsIHRhcmdldCwgc2VydmljZUtleShzdmMpKTsKCiAgICB0cnkgewogICAgICBjb25zdCBjdHJsID0gbmV3IEFib3J0Q29udHJvbGxlcigpOwogICAgICBjb25zdCB0byA9IHNldFRpbWVvdXQoKCkgPT4gY3RybC5hYm9ydCgpLCA5MDAwKTsKICAgICAgY29uc3QgdXAgPSBhd2FpdCBmZXRjaCh0YXJnZXQsIHsgaGVhZGVycywgc2lnbmFsOiBjdHJsLnNpZ25hbCB9KTsKICAgICAgY2xlYXJUaW1lb3V0KHRvKTsKICAgICAgY29uc3QgdGV4dCA9IGF3YWl0IHVwLnRleHQoKTsKICAgICAgY29ycyhyZXMpOwogICAgICByZXMud3JpdGVIZWFkKHVwLnN0YXR1cywgeyAnQ29udGVudC1UeXBlJzogdXAuaGVhZGVycy5nZXQoJ2NvbnRlbnQtdHlwZScpIHx8ICdhcHBsaWNhdGlvbi9qc29uJyB9KTsKICAgICAgcmV0dXJuIHJlcy5lbmQodGV4dCk7CiAgICB9IGNhdGNoIChlKXsKICAgICAgcmV0dXJuIGpzb24ocmVzLCA1MDIsIHsgZXJyb3I6ICdVcHN0cmVhbS1GZWhsZXInLCBkZXRhaWw6IFN0cmluZygoZSAmJiBlLm1lc3NhZ2UpIHx8IGUpIH0pOwogICAgfQogIH0KCiAgLy8gR0VUIC9hcGkvZGF0YS86dXNlcgogIGlmIChyZXEubWV0aG9kID09PSAnR0VUJyAmJiBwYXJ0c1swXSA9PT0gJ2FwaScgJiYgcGFydHNbMV0gPT09ICdkYXRhJyAmJiBwYXJ0c1syXSl7CiAgICBjb25zdCBkYiA9IHJlYWREQigpOwogICAgY29uc3QgdSAgPSBkYi51c2Vyc1tkZWNvZGVVUklDb21wb25lbnQocGFydHNbMl0pXSB8fCB7IGNhcmRzOiBbXSwgc3RhdHM6IG51bGwgfTsKICAgIHJldHVybiBqc29uKHJlcywgMjAwLCB1KTsKICB9CgogIC8vIFBVVCAvYXBpL2RhdGEvOnVzZXIgICBib2R5IHsgY2FyZHMsIHN0YXRzIH0KICBpZiAocmVxLm1ldGhvZCA9PT0gJ1BVVCcgJiYgcGFydHNbMF0gPT09ICdhcGknICYmIHBhcnRzWzFdID09PSAnZGF0YScgJiYgcGFydHNbMl0pewogICAgY29uc3QgYm9keSA9IGF3YWl0IHJlYWRCb2R5KHJlcSk7CiAgICBpZiAoIWJvZHkgfHwgIUFycmF5LmlzQXJyYXkoYm9keS5jYXJkcykpIHJldHVybiBqc29uKHJlcywgNDAwLCB7IGVycm9yOiAnY2FyZHNbXSBlcndhcnRldCcgfSk7CiAgICBjb25zdCBkYiA9IHJlYWREQigpOwogICAgZGIudXNlcnNbZGVjb2RlVVJJQ29tcG9uZW50KHBhcnRzWzJdKV0gPSB7CiAgICAgIGNhcmRzOiBib2R5LmNhcmRzLAogICAgICBzdGF0czogYm9keS5zdGF0cyB8fCBudWxsLAogICAgICB1cGRhdGVkOiBEYXRlLm5vdygpCiAgICB9OwogICAgd3JpdGVEQihkYik7CiAgICByZXR1cm4ganNvbihyZXMsIDIwMCwgeyBvazogdHJ1ZSwgY291bnQ6IGJvZHkuY2FyZHMubGVuZ3RoIH0pOwogIH0KCiAgLy8gR0VUIC9hcGkvYWRtaW4vb3ZlcnZpZXcgICBoZWFkZXIgeC1hZG1pbi1jb2RlCiAgaWYgKHJlcS5tZXRob2QgPT09ICdHRVQnICYmIHVybC5wYXRobmFtZSA9PT0gJy9hcGkvYWRtaW4vb3ZlcnZpZXcnKXsKICAgIGlmICgocmVxLmhlYWRlcnNbJ3gtYWRtaW4tY29kZSddIHx8ICcnKSAhPT0gQURNSU5fQ09ERSkgcmV0dXJuIGpzb24ocmVzLCA0MDMsIHsgZXJyb3I6ICdGYWxzY2hlciBBZG1pbi1Db2RlJyB9KTsKICAgIGNvbnN0IGRiID0gcmVhZERCKCk7CiAgICBjb25zdCBvdmVydmlldyA9IE9iamVjdC5rZXlzKGRiLnVzZXJzKS5tYXAodWlkID0+ICh7CiAgICAgIHVzZXI6IHVpZCwKICAgICAgY2FyZHM6IChkYi51c2Vyc1t1aWRdLmNhcmRzIHx8IFtdKS5sZW5ndGgsCiAgICAgIHZhbHVlOiAoZGIudXNlcnNbdWlkXS5jYXJkcyB8fCBbXSkucmVkdWNlKChzLCBjKSA9PiBzICsgKE51bWJlcihjLnZhbHVlKSB8fCAwKSwgMCksCiAgICAgIHVwZGF0ZWQ6IGRiLnVzZXJzW3VpZF0udXBkYXRlZCB8fCBudWxsCiAgICB9KSk7CiAgICByZXR1cm4ganNvbihyZXMsIDIwMCwgeyB1c2Vyczogb3ZlcnZpZXcsIHRvdGFsOiBvdmVydmlldy5sZW5ndGggfSk7CiAgfQoKICBqc29uKHJlcywgNDA0LCB7IGVycm9yOiAnbm90IGZvdW5kJyB9KTsKfSk7CgpzZXJ2ZXIubGlzdGVuKFBPUlQsICgpID0+IHsKICBjb25zb2xlLmxvZygn4pWU4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWQ4pWXJyk7CiAgY29uc29sZS5sb2coJ+KVkSAgIEdyYWRlLUNoZWNrIFZhdWx0IOKAkyBsb2thbGVyIFNlcnZlciBsw6R1ZnQgICAgIOKVkScpOwogIGNvbnNvbGUubG9nKCfilZrilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZDilZ0nKTsKICBjb25zb2xlLmxvZygnICBBZHJlc3NlICA6IGh0dHA6Ly9sb2NhbGhvc3Q6JyArIFBPUlQpOwogIGNvbnNvbGUubG9nKCcgIERhdGVuICAgIDogJyArIERCX0ZJTEUpOwogIGNvbnNvbGUubG9nKCcgIFByb3h5ICAgIDogaHR0cDovL2xvY2FsaG9zdDonICsgUE9SVCArICcvYXBpL3Byb3h5LzxkaWVuc3Q+LzxwZmFkPicpOwogIE9iamVjdC5lbnRyaWVzKFNFUlZJQ0VTKS5mb3JFYWNoKChbbiwgc10pID0+IHsKICAgIGlmIChzLmVudikgY29uc29sZS5sb2coJyAgICAgwrcgJyArIG4gKyAnOiBLZXkgJyArIChwcm9jZXNzLmVudltzLmVudl0gPyAnZ2VsYWRlbiDinJMnIDogJ0ZFSExUICAoVW1nZWJ1bmdzdmFyaWFibGUgJyArIHMuZW52ICsgJyBzZXR6ZW4pJykpOwogICAgZWxzZSAgICAgICBjb25zb2xlLmxvZygnICAgICDCtyAnICsgbiArICc6IGtlaW4gS2V5IG7DtnRpZycpOwogIH0pOwogIGNvbnNvbGUubG9nKCcgIEFkbWluICAgIDogaHR0cDovL2xvY2FsaG9zdDonICsgUE9SVCArICcvYXBpL2FkbWluL292ZXJ2aWV3ICAoSGVhZGVyIHgtYWRtaW4tY29kZTogJyArIEFETUlOX0NPREUgKyAnKScpOwogIGNvbnNvbGUubG9nKCcgIEJlZW5kZW4gIDogU3RyZyArIEMnKTsKfSk7Cg==";
+function _b64Blob(b64,type){
+  const bin=atob(b64),len=bin.length,bytes=new Uint8Array(len);
+  for(let i=0;i<len;i++)bytes[i]=bin.charCodeAt(i);
+  return new Blob([bytes],{type:type});
+}
+let _nebulaLoaded=false;
+function loadNebula(){
+  if(_nebulaLoaded)return;
+  const f=document.getElementById('nebula-frame');
+  if(!f)return;
+  try{ f.src=URL.createObjectURL(_b64Blob(NEBULA_B64,'text/html')); _nebulaLoaded=true; }
+  catch(e){ if(window.toast)toast('Nebula konnte nicht geladen werden'); }
+}
+function downloadServer(){
+  try{
+    const url=URL.createObjectURL(_b64Blob(SERVER_B64,'text/javascript'));
+    const a=document.createElement('a'); a.href=url; a.download='server.js'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);
+    if(window.toast)toast('server.js heruntergeladen');
+  }catch(e){ if(window.toast)toast('Download fehlgeschlagen'); }
+}
+Object.assign(window,{loadNebula,downloadServer});
+</script>
+</body>
+</html>
